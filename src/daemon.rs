@@ -329,12 +329,6 @@ impl Daemon {
         };
         let network_info = daemon.getnetworkinfo()?;
         info!("{:?}", network_info);
-        if network_info.version < 16_00_00 {
-            bail!(
-                "{} is not supported - please use bitcoind 0.16+",
-                network_info.subversion,
-            )
-        }
         let blockchain_info = daemon.getblockchaininfo()?;
         info!("{:?}", blockchain_info);
         if blockchain_info.pruned {
@@ -641,10 +635,9 @@ impl Daemon {
             if indexed_headers.header_by_blockhash(&blockhash).is_some() {
                 break;
             }
-            let header = self
-                .getblockheader(&blockhash)
-                .chain_err(|| format!("failed to get {} header", blockhash))?;
-            new_headers.push(header);
+            let header = self.getblockheader(&blockhash)
+                .unwrap_or_else(|_| panic!("failed to get {} header", blockhash));
+            new_headers.push(header.clone());
             blockhash = header.prev_blockhash;
         }
         trace!("downloaded {} block headers", new_headers.len());
