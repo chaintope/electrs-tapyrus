@@ -285,6 +285,8 @@ mod tests {
     #[test]
     fn test_headers() {
         use bitcoin::blockdata::block::BlockHeader;
+        use bitcoin::blockdata::block::Signature;
+        use bitcoin::blockdata::script::Script;
         use bitcoin::util::hash::BitcoinHash;
         use bitcoin_hashes::sha256d::Hash as Sha256dHash;
         use bitcoin_hashes::Hash;
@@ -300,13 +302,14 @@ mod tests {
         header_list.apply(vec![], null_hash);
 
         let merkle_root = Sha256dHash::hash(&[255]);
+        let im_merkle_root = Sha256dHash::hash(&[255]);
         let mut headers = vec![BlockHeader {
             version: 1,
             prev_blockhash: Sha256dHash::default(),
             merkle_root,
+            im_merkle_root,
             time: 0,
-            bits: 0,
-            nonce: 0,
+            proof: Signature { signature: Script::new() },
         }];
         for _height in 1..10 {
             let prev_blockhash = headers.last().unwrap().bitcoin_hash();
@@ -314,9 +317,9 @@ mod tests {
                 version: 1,
                 prev_blockhash,
                 merkle_root,
+                im_merkle_root,
                 time: 0,
-                bits: 0,
-                nonce: 0,
+                proof: Signature { signature: Script::new() },
             };
             headers.push(header);
         }

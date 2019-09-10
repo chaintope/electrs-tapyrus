@@ -258,7 +258,7 @@ impl Query {
                     && input.previous_output.vout == funding.output_index as u32
                 {
                     spending_inputs.push(SpendingInput {
-                        txn_id: t.txn.txid(),
+                        txn_id: t.txn.malfix_txid(),
                         height: t.height,
                         funding_output: (funding.txn_id, funding.output_index),
                         value: funding.value,
@@ -276,7 +276,7 @@ impl Query {
 
     fn find_funding_outputs(&self, t: &TxnHeight, script_hash: &[u8]) -> Vec<FundingOutput> {
         let mut result = vec![];
-        let txn_id = t.txn.txid();
+        let txn_id = t.txn.malfix_txid();
         for (index, output) in t.txn.output.iter().enumerate() {
             if compute_script_hash(&output.script_pubkey[..]) == script_hash {
                 result.push(FundingOutput {

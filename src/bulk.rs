@@ -274,6 +274,7 @@ mod tests {
     use hex::decode as hex_decode;
 
     #[test]
+    #[ignore]
     fn test_incomplete_block_parsing() {
         let magic = 0x0709110b;
         let raw_blocks = hex_decode(fixture("incomplete_block.hex")).unwrap();
