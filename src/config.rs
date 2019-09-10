@@ -174,6 +174,7 @@ impl Config {
             Network::Bitcoin => "mainnet",
             Network::Testnet => "testnet",
             Network::Regtest => "regtest",
+            Network::Paradium => "paradium",
         };
 
         config.db_dir.push(db_subdir);
@@ -182,16 +183,19 @@ impl Config {
             Network::Bitcoin => 2377,
             Network::Testnet => 12377,
             Network::Regtest => 12381,
+            Network::Paradium => 2377,
         };
         let default_electrum_port = match config.network {
             Network::Bitcoin => 50001,
             Network::Testnet => 60001,
             Network::Regtest => 60401,
+            Network::Paradium => 40001,
         };
         let default_monitoring_port = match config.network {
             Network::Bitcoin => 4224,
             Network::Testnet => 14224,
             Network::Regtest => 24224,
+            Network::Paradium => 34224,
         };
 
         let daemon_rpc_addr: SocketAddr = config.daemon_rpc_addr.map_or(
@@ -211,6 +215,7 @@ impl Config {
             Network::Bitcoin => (),
             Network::Testnet => config.daemon_dir.push("testnet3"),
             Network::Regtest => config.daemon_dir.push("regtest"),
+            Network::Paradium => config.daemon_dir.push("paradium"),
         }
 
         let mut log = stderrlog::new();
