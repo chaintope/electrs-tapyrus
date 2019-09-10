@@ -179,9 +179,9 @@ impl Config {
         config.db_dir.push(db_subdir);
 
         let default_daemon_port = match config.network {
-            Network::Bitcoin => 8332,
-            Network::Testnet => 18332,
-            Network::Regtest => 18443,
+            Network::Bitcoin => 2377,
+            Network::Testnet => 12377,
+            Network::Regtest => 12381,
         };
         let default_electrum_port = match config.network {
             Network::Bitcoin => 50001,
