@@ -125,16 +125,14 @@ dependencies = [
 [[package]]
 name = "bitcoin"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://bitbucket.org/chaintope/rust-tapyrus/#e723bc3a6d4b247d7789e064ca81d9bbb3f883e7"
 dependencies = [
  "bitcoin-bech32 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_hashes 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_hashes 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_test 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -147,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "bitcoin_hashes"
-version = "0.3.2"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -348,8 +346,8 @@ version = "0.7.1"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_hashes 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin 0.18.0 (git+https://bitbucket.org/chaintope/rust-tapyrus/)",
+ "bitcoin_hashes 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "configure_me 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "configure_me_codegen 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "crossbeam-channel 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -900,6 +898,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "serde"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "serde_derive 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "serde_derive"
@@ -918,14 +919,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "itoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ryu 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "serde_test"
-version = "1.0.99"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
  "serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1211,9 +1204,9 @@ dependencies = [
 "checksum bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "58946044516aa9dc922182e0d6e9d124a31aafe6b421614654eb27cf90cec09c"
 "checksum bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "9f04a5e50dc80b3d5d35320889053637d15011aed5e66b66b37ae798c65da6f7"
 "checksum bindgen 0.49.2 (registry+https://github.com/rust-lang/crates.io-index)" = "846a1fba6535362a01487ef6b10f0275faa12e5c5d835c5c1c627aabc46ccbd6"
-"checksum bitcoin 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "381b74ae6480c4da21dccdf6fdf7400250710fc891af8d82376cb5c03e5f6f1d"
+"checksum bitcoin 0.18.0 (git+https://bitbucket.org/chaintope/rust-tapyrus/)" = "<none>"
 "checksum bitcoin-bech32 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4e67e8ccfc663811145e6cabdb9a2a6978877f72b048516e83eb95622e9b2554"
-"checksum bitcoin_hashes 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2b7a2e9773ee7ae7f2560f0426c938f57902dcb9e39321b0cbd608f47ed579a4"
+"checksum bitcoin_hashes 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "db6b697833d852acea530c9e815e6adc724267856b6506bc500362a068a39c7b"
 "checksum bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3d155346769a6855b86399e9bc3814ab343cd3d62c7e985113d46a0ec3c281fd"
 "checksum blake2-rfc 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "5d6d530bdd2d52966a6d03b7a964add7ae1a288d25214066fd4b600f0f796400"
 "checksum build-helper 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bdce191bf3fa4995ce948c8c83b4640a1745457a149e73c6db75b4ffe36aad5f"
@@ -1307,7 +1300,6 @@ dependencies = [
 "checksum serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)" = "7fe5626ac617da2f2d9c48af5515a21d5a480dbd151e01bb1c355e26a3e68113"
 "checksum serde_derive 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)" = "01e69e1b8a631f245467ee275b8c757b818653c6d704cdbcaeb56b56767b529c"
 "checksum serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)" = "051c49229f282f7c6f3813f8286cc1e3323e8051823fce42c7ea80fe13521704"
-"checksum serde_test 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)" = "f2d8999326d1f713002c52199b3f30c052dc8998d9359d5ae950328e527da1cd"
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 "checksum signal-hook 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4f61c4d59f3aaa9f61bba6450a9b80ba48362fd7d651689e7a10c453b1f6dc68"
 "checksum signal-hook-registry 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "913661ac8848a61e39684a3c3e7a7a14a4deec7f54b4976d0641e70dda3939b1"
