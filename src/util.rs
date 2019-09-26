@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn test_headers() {
         use tapyrus::blockdata::block::BlockHeader;
-        use tapyrus::blockdata::block::Signature;
+        use tapyrus::blockdata::block::Proof;
         use tapyrus::blockdata::script::Script;
         use tapyrus::util::hash::BitcoinHash;
         use bitcoin_hashes::sha256d::Hash as Sha256dHash;
@@ -309,7 +309,7 @@ mod tests {
             merkle_root,
             im_merkle_root,
             time: 0,
-            proof: Signature { signature: Script::new() },
+            proof: Proof { signatures: Vec::new() },
         }];
         for _height in 1..10 {
             let prev_blockhash = headers.last().unwrap().bitcoin_hash();
@@ -319,7 +319,7 @@ mod tests {
                 merkle_root,
                 im_merkle_root,
                 time: 0,
-                proof: Signature { signature: Script::new() },
+                proof: Proof { signatures: Vec::new() },
             };
             headers.push(header);
         }

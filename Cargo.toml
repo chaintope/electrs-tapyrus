@@ -24,7 +24,7 @@ latest_rust = []  # use latest Rust features (otherwise, support Rust 1.34)
 [dependencies]
 base64 = "0.10"
 bincode = "1.0"
-tapyrus = { git = "https://github.com/chaintope/rust-tapyrus/", features = ["use-serde"]}
+tapyrus = { git = "https://github.com/chaintope/rust-tapyrus/", branch="feature/monkey_patch_for_old_format", features = ["use-serde"]}
 bitcoin_hashes = "0.7"
 configure_me = "0.3.2"
 crossbeam-channel = "0.3"
