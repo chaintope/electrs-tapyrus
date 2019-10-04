@@ -221,7 +221,7 @@ impl Tracker {
                 }
             };
             for ((txid, entry), tx) in entries.into_iter().zip(txs.into_iter()) {
-                assert_eq!(tx.txid(), *txid);
+                assert_eq!(tx.malfix_txid(), *txid);
                 self.add(txid, tx, entry);
             }
         }

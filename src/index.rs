@@ -175,7 +175,7 @@ pub fn index_transaction<'a>(
     height: usize,
 ) -> impl 'a + Iterator<Item = Row> {
     let null_hash = Sha256dHash::default();
-    let txid: Sha256dHash = txn.txid();
+    let txid: Sha256dHash = txn.malfix_txid();
 
     let inputs = txn.input.iter().filter_map(move |input| {
         if input.previous_output.txid == null_hash {
