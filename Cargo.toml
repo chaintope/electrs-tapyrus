@@ -1,16 +1,19 @@
 [package]
-name = "electrs"
-version = "0.7.1"
+name = "electrs-tapyrus"
+version = "0.1.0"
 authors = ["Roman Zeyde <me@romanzey.de>"]
 description = "An efficient re-implementation of Electrum Server in Rust"
 license = "MIT"
-homepage = "https://github.com/romanz/electrs"
-repository = "https://github.com/romanz/electrs"
+homepage = "https://github.com/chaintope/electrs-tapyrus"
+repository = "https://github.com/chaintope/electrs-tapyrus"
 keywords = ["bitcoin", "electrum", "server", "index", "database"]
-documentation = "https://docs.rs/electrs/"
 readme = "README.md"
 edition = "2018"
 build = "build.rs"
+
+[lib]
+name = "electrs_tapyrus"
+path = "src/lib.rs"
 
 [profile.release]
 lto = true

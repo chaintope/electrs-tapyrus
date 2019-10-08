@@ -1,12 +1,12 @@
 /// Benchmark full compaction.
-extern crate electrs;
+extern crate electrs_tapyrus;
 
 #[macro_use]
 extern crate log;
 
 extern crate error_chain;
 
-use electrs::{config::Config, errors::*, store::DBStore};
+use electrs_tapyrus::{config::Config, errors::*, store::DBStore};
 
 use error_chain::ChainedError;
 
