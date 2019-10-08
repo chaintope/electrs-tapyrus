@@ -1,9 +1,9 @@
 use base64;
-use bitcoin::blockdata::block::{Block, BlockHeader};
-use bitcoin::blockdata::transaction::Transaction;
-use bitcoin::consensus::encode::{deserialize, serialize};
-use bitcoin::network::constants::Network;
-use bitcoin::util::hash::BitcoinHash;
+use tapyrus::blockdata::block::{Block, BlockHeader};
+use tapyrus::blockdata::transaction::Transaction;
+use tapyrus::consensus::encode::{deserialize, serialize};
+use tapyrus::network::constants::Network;
+use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use glob;

@@ -1,9 +1,8 @@
 # Electrum Server in Rust
 
-[![CircleCI](https://circleci.com/gh/romanz/electrs/tree/master.svg?style=svg)](https://circleci.com/gh/romanz/electrs/tree/master)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-[![crates.io](http://meritbadge.herokuapp.com/electrs)](https://crates.io/crates/electrs)
-[![gitter.im](https://badges.gitter.im/romanz/electrs.svg)](https://gitter.im/romanz/electrs)
+This is forked from [romanz/electrs](https://github.com/romanz/electrs). So, features and 
+specifications are almost same with original. You can find documents for extended specification for 
+tapyrus here [tapyrus doc](https://github.com/chaintope/tapyrus-core/tree/master/doc/tapyrus).
 
 An efficient re-implementation of Electrum Server, inspired by [ElectrumX](https://github.com/kyuupichan/electrumx), [Electrum Personal Server](https://github.com/chris-belcher/electrum-personal-server) and [bitcoincore-indexd](https://github.com/jonasschnelli/bitcoincore-indexd).
 

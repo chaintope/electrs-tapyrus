@@ -1,5 +1,5 @@
-use bitcoin::blockdata::transaction::Transaction;
-use bitcoin::consensus::encode::{deserialize, serialize};
+use tapyrus::blockdata::transaction::Transaction;
+use tapyrus::consensus::encode::{deserialize, serialize};
 use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use error_chain::ChainedError;

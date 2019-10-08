@@ -1,6 +1,6 @@
-use bitcoin::blockdata::block::Block;
-use bitcoin::consensus::encode::{deserialize, Decodable};
-use bitcoin::util::hash::BitcoinHash;
+use tapyrus::blockdata::block::Block;
+use tapyrus::consensus::encode::{deserialize, Decodable};
+use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use libc;
 use std::collections::HashSet;

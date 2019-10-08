@@ -1,9 +1,9 @@
-extern crate electrs;
+extern crate electrs_tapyrus;
 
 extern crate hex;
 extern crate log;
 
-use electrs::{config::Config, store::DBStore};
+use electrs_tapyrus::{config::Config, store::DBStore};
 
 fn max_collision(store: DBStore, prefix: &[u8]) {
     let prefix_len = prefix.len();
