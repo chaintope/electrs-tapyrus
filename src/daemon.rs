@@ -1,9 +1,4 @@
 use base64;
-use tapyrus::blockdata::block::{Block, BlockHeader};
-use tapyrus::blockdata::transaction::Transaction;
-use tapyrus::consensus::encode::{deserialize, serialize};
-use tapyrus::network::constants::Network;
-use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use glob;
@@ -16,6 +11,11 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tapyrus::blockdata::block::{Block, BlockHeader};
+use tapyrus::blockdata::transaction::Transaction;
+use tapyrus::consensus::encode::{deserialize, serialize};
+use tapyrus::network::constants::Network;
+use tapyrus::util::hash::BitcoinHash;
 
 use crate::cache::BlockTxIDsCache;
 use crate::errors::*;
@@ -635,7 +635,8 @@ impl Daemon {
             if indexed_headers.header_by_blockhash(&blockhash).is_some() {
                 break;
             }
-            let header = self.getblockheader(&blockhash)
+            let header = self
+                .getblockheader(&blockhash)
                 .chain_err(|| format!("failed to get {} header", blockhash))?;
             new_headers.push(header.clone());
             blockhash = header.prev_blockhash;

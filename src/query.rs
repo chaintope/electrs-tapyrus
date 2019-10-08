@@ -1,5 +1,3 @@
-use tapyrus::blockdata::transaction::Transaction;
-use tapyrus::consensus::encode::deserialize;
 use bitcoin_hashes::hex::ToHex;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin_hashes::Hash;
@@ -9,6 +7,8 @@ use lru::LruCache;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
+use tapyrus::blockdata::transaction::Transaction;
+use tapyrus::consensus::encode::deserialize;
 
 use crate::app::App;
 use crate::errors::*;

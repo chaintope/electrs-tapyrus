@@ -1,5 +1,3 @@
-use tapyrus::blockdata::transaction::Transaction;
-use tapyrus::consensus::encode::{deserialize, serialize};
 use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use error_chain::ChainedError;
@@ -11,6 +9,8 @@ use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::mpsc::{Sender, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use tapyrus::blockdata::transaction::Transaction;
+use tapyrus::consensus::encode::{deserialize, serialize};
 
 use crate::errors::*;
 use crate::metrics::{Gauge, HistogramOpts, HistogramVec, MetricOpts, Metrics};

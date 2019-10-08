@@ -1,14 +1,14 @@
 use bincode;
-use tapyrus::blockdata::block::{Block, BlockHeader};
-use tapyrus::blockdata::transaction::{Transaction, TxIn, TxOut};
-use tapyrus::consensus::encode::{deserialize, serialize};
-use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::sync::RwLock;
+use tapyrus::blockdata::block::{Block, BlockHeader};
+use tapyrus::blockdata::transaction::{Transaction, TxIn, TxOut};
+use tapyrus::consensus::encode::{deserialize, serialize};
+use tapyrus::util::hash::BitcoinHash;
 
 use crate::daemon::Daemon;
 use crate::errors::*;
