@@ -1,11 +1,11 @@
 // TODO: network::socket::Socket needs to be reimplemented.
 
-use bitcoin::network::constants::Network;
-use bitcoin::network::message::NetworkMessage;
-use bitcoin::network::message_blockdata::InvType;
-use bitcoin::network::socket::Socket;
-use bitcoin::util::hash::Sha256dHash;
-use bitcoin::util::Error;
+use tapyrus::network::constants::Network;
+use tapyrus::network::message::NetworkMessage;
+use tapyrus::network::message_blockdata::InvType;
+use tapyrus::network::socket::Socket;
+use tapyrus::util::hash::Sha256dHash;
+use tapyrus::util::Error;
 
 use std::sync::mpsc::Sender;
 use std::thread;

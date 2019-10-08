@@ -1,8 +1,8 @@
 use bincode;
-use bitcoin::blockdata::block::{Block, BlockHeader};
-use bitcoin::blockdata::transaction::{Transaction, TxIn, TxOut};
-use bitcoin::consensus::encode::{deserialize, serialize};
-use bitcoin::util::hash::BitcoinHash;
+use tapyrus::blockdata::block::{Block, BlockHeader};
+use tapyrus::blockdata::transaction::{Transaction, TxIn, TxOut};
+use tapyrus::consensus::encode::{deserialize, serialize};
+use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;

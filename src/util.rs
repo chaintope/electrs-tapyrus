@@ -1,5 +1,5 @@
-use bitcoin::blockdata::block::BlockHeader;
-use bitcoin::util::hash::BitcoinHash;
+use tapyrus::blockdata::block::BlockHeader;
+use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -284,10 +284,10 @@ where
 mod tests {
     #[test]
     fn test_headers() {
-        use bitcoin::blockdata::block::BlockHeader;
-        use bitcoin::blockdata::block::Signature;
-        use bitcoin::blockdata::script::Script;
-        use bitcoin::util::hash::BitcoinHash;
+        use tapyrus::blockdata::block::BlockHeader;
+        use tapyrus::blockdata::block::Signature;
+        use tapyrus::blockdata::script::Script;
+        use tapyrus::util::hash::BitcoinHash;
         use bitcoin_hashes::sha256d::Hash as Sha256dHash;
         use bitcoin_hashes::Hash;
 

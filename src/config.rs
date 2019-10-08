@@ -1,4 +1,4 @@
-use bitcoin::network::constants::Network;
+use tapyrus::network::constants::Network;
 use dirs::home_dir;
 use num_cpus;
 use std::convert::TryInto;

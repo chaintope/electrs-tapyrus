@@ -1,4 +1,4 @@
-use bitcoin::blockdata::transaction::Transaction;
+use tapyrus::blockdata::transaction::Transaction;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use hex;
 use std::collections::{BTreeMap, HashMap, HashSet};
