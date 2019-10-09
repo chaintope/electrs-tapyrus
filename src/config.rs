@@ -1,4 +1,3 @@
-use tapyrus::network::constants::Network;
 use dirs::home_dir;
 use num_cpus;
 use std::convert::TryInto;
@@ -11,6 +10,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use stderrlog;
+use tapyrus::network::constants::Network;
 
 use crate::daemon::CookieGetter;
 use crate::errors::*;

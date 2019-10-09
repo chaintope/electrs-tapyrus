@@ -1,10 +1,10 @@
-use tapyrus::blockdata::transaction::Transaction;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use hex;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::iter::FromIterator;
 use std::ops::Bound;
 use std::sync::Mutex;
+use tapyrus::blockdata::transaction::Transaction;
 
 use crate::daemon::{Daemon, MempoolEntry};
 use crate::errors::*;

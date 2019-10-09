@@ -1,3 +1,5 @@
+[![Status](https://travis-ci.org/chaintope/electrs-tapyrus.png?branch=master)](https://travis-ci.org/chaintope/electrs-tapyrus)
+
 # Electrum Server in Rust
 
 This is forked from [romanz/electrs](https://github.com/romanz/electrs). So, features and 

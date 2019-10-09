@@ -1,6 +1,3 @@
-use tapyrus::blockdata::block::Block;
-use tapyrus::consensus::encode::{deserialize, Decodable};
-use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use libc;
 use std::collections::HashSet;
@@ -12,6 +9,9 @@ use std::sync::{
     Arc, Mutex,
 };
 use std::thread;
+use tapyrus::blockdata::block::Block;
+use tapyrus::consensus::encode::{deserialize, Decodable};
+use tapyrus::util::hash::BitcoinHash;
 
 use crate::daemon::Daemon;
 use crate::errors::*;
@@ -280,5 +280,4 @@ mod tests {
             .join(filename);
         fs::read_to_string(path).unwrap()
     }
-
 }

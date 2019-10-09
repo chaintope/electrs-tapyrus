@@ -1,5 +1,3 @@
-use tapyrus::blockdata::block::BlockHeader;
-use tapyrus::util::hash::BitcoinHash;
 use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -8,6 +6,8 @@ use std::iter::FromIterator;
 use std::slice;
 use std::sync::mpsc::{channel, sync_channel, Receiver, Sender, SyncSender};
 use std::thread;
+use tapyrus::blockdata::block::BlockHeader;
+use tapyrus::util::hash::BitcoinHash;
 use time;
 
 pub type Bytes = Vec<u8>;
@@ -284,12 +284,12 @@ where
 mod tests {
     #[test]
     fn test_headers() {
+        use bitcoin_hashes::sha256d::Hash as Sha256dHash;
+        use bitcoin_hashes::Hash;
         use tapyrus::blockdata::block::BlockHeader;
         use tapyrus::blockdata::block::Signature;
         use tapyrus::blockdata::script::Script;
         use tapyrus::util::hash::BitcoinHash;
-        use bitcoin_hashes::sha256d::Hash as Sha256dHash;
-        use bitcoin_hashes::Hash;
 
         use super::HeaderList;
 
@@ -309,7 +309,9 @@ mod tests {
             merkle_root,
             im_merkle_root,
             time: 0,
-            proof: Signature { signature: Script::new() },
+            proof: Signature {
+                signature: Script::new(),
+            },
         }];
         for _height in 1..10 {
             let prev_blockhash = headers.last().unwrap().bitcoin_hash();
@@ -319,7 +321,9 @@ mod tests {
                 merkle_root,
                 im_merkle_root,
                 time: 0,
-                proof: Signature { signature: Script::new() },
+                proof: Signature {
+                    signature: Script::new(),
+                },
             };
             headers.push(header);
         }
