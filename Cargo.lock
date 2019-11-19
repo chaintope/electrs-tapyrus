@@ -395,7 +395,7 @@ dependencies = [
  "openassets-tapyrus 0.1.0 (git+https://github.com/chaintope/openassets-tapyrus/?tag=v0.1.0)",
  "page_size 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "prometheus 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocksdb 0.13.0 (git+https://github.com/rust-rocksdb/rust-rocksdb?rev=aa1aa97163b2db54e90e0056b150d5ff11af0068)",
+ "rocksdb 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -583,8 +583,8 @@ dependencies = [
 
 [[package]]
 name = "librocksdb-sys"
-version = "6.4.6"
-source = "git+https://github.com/rust-rocksdb/rust-rocksdb?rev=aa1aa97163b2db54e90e0056b150d5ff11af0068#aa1aa97163b2db54e90e0056b150d5ff11af0068"
+version = "6.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bindgen 0.49.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -893,10 +893,10 @@ dependencies = [
 [[package]]
 name = "rocksdb"
 version = "0.13.0"
-source = "git+https://github.com/rust-rocksdb/rust-rocksdb?rev=aa1aa97163b2db54e90e0056b150d5ff11af0068#aa1aa97163b2db54e90e0056b150d5ff11af0068"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
- "librocksdb-sys 6.4.6 (git+https://github.com/rust-rocksdb/rust-rocksdb?rev=aa1aa97163b2db54e90e0056b150d5ff11af0068)",
+ "librocksdb-sys 6.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1369,7 +1369,7 @@ dependencies = [
 "checksum leb128 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
 "checksum libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)" = "d515b1f41455adea1313a4a2ac8a8a477634fbae63cc6100e3aebb207ce61558"
 "checksum libloading 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
-"checksum librocksdb-sys 6.4.6 (git+https://github.com/rust-rocksdb/rust-rocksdb?rev=aa1aa97163b2db54e90e0056b150d5ff11af0068)" = "<none>"
+"checksum librocksdb-sys 6.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "0a0785e816e1e11e7599388a492c61ef80ddc2afc91e313e61662cce537809be"
 "checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 "checksum lru 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0609345ddee5badacf857d4f547e0e5a2e987db77085c24cd887f73573a04237"
 "checksum man 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ccbbb1d623a3cbcaeef9a072f7ccbd6f8ca1e788f3e301d5c49bdd67b1f5a942"
@@ -1406,7 +1406,7 @@ dependencies = [
 "checksum redox_users 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3fe5204c3a17e97dde73f285d49be585df59ed84b50a872baf416e73b62c3828"
 "checksum regex 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6b23da8dfd98a84bd7e08700190a5d9f7d2d38abd4369dd1dae651bc40bfd2cc"
 "checksum regex-syntax 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "cd5485bf1523a9ed51c4964273f22f63f24e31632adb5dad134f488f86a3875c"
-"checksum rocksdb 0.13.0 (git+https://github.com/rust-rocksdb/rust-rocksdb?rev=aa1aa97163b2db54e90e0056b150d5ff11af0068)" = "<none>"
+"checksum rocksdb 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "12069b106981c6103d3eab7dd1c86751482d0779a520b7c14954c8b586c1e643"
 "checksum roff 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e33e4fb37ba46888052c763e4ec2acfedd8f00f62897b630cadb6298b833675e"
 "checksum rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)" = "f76d05d3993fd5f4af9434e8e436db163a12a9d40e1a58a726f27a01dfd12a2a"
 "checksum rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "a7f4dccf6f4891ebcc0c39f9b6eb1a83b9bf5d747cb439ec6fba4f3b977038af"

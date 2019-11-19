@@ -43,7 +43,7 @@ num_cpus = "1.0"
 openassets-tapyrus = { git = "https://github.com/chaintope/openassets-tapyrus/", tag = "v0.1.0" }
 page_size = "0.4"
 prometheus = "0.5"
-rocksdb = { git = "https://github.com/rust-rocksdb/rust-rocksdb", rev = "aa1aa97163b2db54e90e0056b150d5ff11af0068" }
+rocksdb = "0.13"
 rust-crypto = "0.2"
 serde = { version = "1.0", features = ["derive"]}
 serde_derive = "1.0"
