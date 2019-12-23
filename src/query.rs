@@ -25,6 +25,30 @@ pub struct FundingOutput {
     pub value: u64,
 }
 
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Asset {
+    pub asset_id: AssetId,
+    pub asset_quantity: u64,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct AssetId {
+    pub hash: bitcoin_hashes::hash160::Hash,
+}
+
+impl AssetId {
+    pub fn new(script: &Script) -> AssetId {
+        AssetId {
+            hash: bitcoin_hashes::hash160::Hash::hash(&script.to_bytes()),
+        }
+    }
+    pub fn from_hex(hex: &str) -> AssetId {
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
+        AssetId::new(&script)
+    }
+}
+
 type OutPoint = (Sha256dHash, usize); // (txid, output_index)
 
 struct SpendingInput {
