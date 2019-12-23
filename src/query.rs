@@ -3,11 +3,16 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin_hashes::Hash;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use hex;
 use lru::LruCache;
+use openassets::openassets::marker_output::TxOutExt;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
+use tapyrus::blockdata::script::Builder;
+use tapyrus::blockdata::script::Script;
 use tapyrus::blockdata::transaction::Transaction;
+use tapyrus::blockdata::transaction::TxOut;
 use tapyrus::consensus::encode::deserialize;
 
 use crate::app::App;
@@ -23,8 +28,26 @@ pub struct FundingOutput {
     pub height: u32,
     pub output_index: usize,
     pub value: u64,
+    pub asset: Option<Asset>,
 }
 
+impl FundingOutput {
+    pub fn build(
+        txn_id: Sha256dHash,
+        height: u32,
+        output_index: usize,
+        value: u64,
+        asset: Option<Asset>,
+    ) -> Self {
+        FundingOutput {
+            txn_id,
+            height,
+            output_index,
+            value,
+            asset,
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Asset {
@@ -328,17 +351,131 @@ impl Query {
     fn find_funding_outputs(&self, t: &TxnHeight, script_hash: &[u8]) -> Vec<FundingOutput> {
         let mut result = vec![];
         let txn_id = t.txn.malfix_txid();
+        let colored_outputs = self.get_colored_outputs(&t.txn);
         for (index, output) in t.txn.output.iter().enumerate() {
             if compute_script_hash(&output.script_pubkey[..]) == script_hash {
-                result.push(FundingOutput {
+                result.push(FundingOutput::build(
                     txn_id,
-                    height: t.height,
-                    output_index: index,
-                    value: output.value,
-                })
+                    t.height,
+                    index,
+                    output.value,
+                    colored_outputs[index].clone(),
+                ))
             }
         }
         result
+    }
+
+    fn get_colored_outputs(&self, txn: &Transaction) -> Vec<Option<Asset>> {
+        if txn.is_coin_base() {
+            txn.output.iter().map(|_| None).collect()
+        } else {
+            for (i, val) in txn.output.iter().enumerate() {
+                let payload = val.get_oa_payload();
+                if let Ok(marker) = payload {
+                    let prev_outs = txn
+                        .input
+                        .iter()
+                        .map(|input| {
+                            self.get_output(&input.previous_output.txid, input.previous_output.vout)
+                        })
+                        .collect();
+                    return Query::compute_assets(prev_outs, i, txn, marker.quantities);
+                }
+            }
+            txn.output.iter().map(|_| None).collect()
+        }
+    }
+
+    fn compute_assets(
+        prev_outs: Vec<(TxOut, Option<Asset>)>,
+        marker_output_index: usize,
+        txn: &Transaction,
+        quantities: Vec<u64>,
+    ) -> Vec<Option<Asset>> {
+        assert!(quantities.len() <= txn.output.len() - 1);
+        assert!(!prev_outs.is_empty());
+
+        let mut result = Vec::new();
+
+        //Issuance outputs
+        let issuance_asset_id = AssetId::new(
+            &prev_outs
+                .first()
+                .expect("previous outputs is not found")
+                .0
+                .script_pubkey,
+        );
+        for i in 0..marker_output_index {
+            let asset = if i < quantities.len() && quantities[i] > 0 {
+                Some(Asset {
+                    asset_id: issuance_asset_id.clone(),
+                    asset_quantity: quantities[i],
+                })
+            } else {
+                None
+            };
+            result.push(asset);
+        }
+
+        //Marker outputs
+        result.push(None);
+
+        //Transfer outputs
+        let mut input_enum = prev_outs.iter();
+        let mut input_units_left = 0;
+        let mut current_input = None;
+        for i in (marker_output_index + 1)..(quantities.len() + 1) {
+            let quantity = quantities[i - 1];
+            let mut output_units_left = quantity;
+            let mut asset_id: Option<AssetId> = None;
+            while output_units_left > 0 {
+                if input_units_left == 0 {
+                    current_input = input_enum.next();
+                    if let Some((_, Some(asset))) = current_input {
+                        input_units_left = asset.asset_quantity;
+                    }
+                }
+                if let Some((_, Some(asset))) = current_input {
+                    let progress = if input_units_left < output_units_left {
+                        input_units_left
+                    } else {
+                        output_units_left
+                    };
+                    output_units_left -= progress;
+                    input_units_left -= progress;
+                    if asset_id.is_none() {
+                        asset_id = Some(asset.asset_id.clone());
+                    } else if asset_id != Some(asset.asset_id.clone()) {
+                        panic!("invalid asset");
+                    }
+                }
+            }
+            let asset = if asset_id.is_some() && quantity > 0 {
+                Some(Asset {
+                    asset_id: asset_id.unwrap(),
+                    asset_quantity: quantity,
+                })
+            } else {
+                None
+            };
+            result.push(asset);
+        }
+
+        //Uncolored outputs
+        for _ in (quantities.len() + 1)..txn.output.len() {
+            result.push(None);
+        }
+        result
+    }
+
+    fn get_output(&self, txid: &Sha256dHash, index: u32) -> (TxOut, Option<Asset>) {
+        let txn = self.load_txn(txid, None).expect("txn not found");
+        let colored_outputs = self.load_assets(&txn).expect("asset not found");
+        (
+            txn.output[index as usize].clone(),
+            colored_outputs[index as usize].clone(),
+        )
     }
 
     fn confirmed_status(
@@ -431,6 +568,13 @@ impl Query {
             let blockhash = self.lookup_confirmed_blockhash(txid, block_height)?;
             self.app.daemon().gettransaction(txid, blockhash)
         })
+    }
+
+    fn load_assets(&self, txn: &Transaction) -> Result<Vec<Option<Asset>>> {
+        // TODO: use DBStore for improving performance.
+        let txid = txn.malfix_txid();
+        self.asset_cache
+            .get_or_else(&txid, || Ok(self.get_colored_outputs(&txn)))
     }
 
     // Public API for transaction retrieval (for Electrum RPC)
@@ -556,5 +700,289 @@ impl Query {
 
     pub fn get_banner(&self) -> Result<String> {
         self.app.get_banner()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bitcoin_hashes::sha256d::Hash as Sha256dHash;
+    use hex;
+    use std::str::FromStr;
+    use tapyrus::blockdata::script::Builder;
+    use tapyrus::blockdata::script::Script;
+    use tapyrus::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
+
+    use crate::errors::*;
+    use crate::query::{Asset, AssetId};
+    use crate::query::{AssetCache, Query};
+
+    #[test]
+    fn test_asset_cache() {
+        let asset_cache = AssetCache::new(10);
+        let txid = Sha256dHash::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let asset = Asset {
+            asset_id: AssetId::new(&Script::new()),
+            asset_quantity: 1,
+        };
+        let result = asset_cache.get_or_else(&txid, || Ok(vec![Some(asset.clone())]));
+        match result {
+            Ok(assets) => {
+                let expected = assets.first().unwrap().as_ref().unwrap();
+                assert!(*expected == asset);
+            }
+            _ => {
+                panic!("error");
+            }
+        }
+        //Use assets in cache
+        let result2 = asset_cache.get_or_else(&txid, || {
+            Err(Error(
+                ErrorKind::Connection("test".to_string()),
+                error_chain::State::default(),
+            ))
+        });
+        match result2 {
+            Ok(assets) => {
+                let expected = assets.first().unwrap().as_ref().unwrap();
+                assert!(*expected == asset);
+            }
+            _ => panic!("error"),
+        }
+    }
+
+    fn asset_1(quantity: u64) -> Option<Asset> {
+        Some(Asset {
+            asset_id: AssetId::from_hex("76a914010966776006953d5567439e5e39f86a0d273bee88ac"),
+            asset_quantity: quantity,
+        })
+    }
+
+    fn asset_2(quantity: u64) -> Option<Asset> {
+        Some(Asset {
+            asset_id: AssetId::from_hex("76a914b60fd86c7464b08d83d98ebeb59655d71be3b22688ac"),
+            asset_quantity: quantity,
+        })
+    }
+
+    fn asset_3(quantity: u64) -> Option<Asset> {
+        Some(Asset {
+            asset_id: AssetId::from_hex("76a9149f00983b75904599a5e9c2e53c8b1002fc42e9ac88ac"),
+            asset_quantity: quantity,
+        })
+    }
+
+    fn default_input(index: u32) -> TxIn {
+        let out_point = OutPoint::new(
+            Sha256dHash::from_str(
+                "0000000000000000000000000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            index,
+        );
+        TxIn {
+            previous_output: out_point,
+            script_sig: Script::new(),
+            sequence: 0,
+            witness: vec![],
+        }
+    }
+
+    #[test]
+    fn test_compute_assets_transfer() {
+        let prev_outs = vec![
+            (TxOut::default(), asset_1(10)),
+            (TxOut::default(), asset_2(20)),
+        ];
+        let index = 0;
+
+        let valid_marker = TxOut {
+            value: 0,
+            script_pubkey: Builder::from(
+                hex::decode(
+                    "6a244f410100030a01131b753d68747470733a2f2f6370722e736d2f35596753553150672d71",
+                )
+                .unwrap(),
+            )
+            .into_script(),
+        };
+        let txn = Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![default_input(0), default_input(1)],
+            output: vec![
+                valid_marker,
+                TxOut::default(),
+                TxOut::default(),
+                TxOut::default(),
+            ],
+        };
+        let quantities = vec![10, 1, 19];
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        assert_eq!(assets.len(), 4);
+        assert_eq!(assets[0], None);
+        assert_eq!(assets[1], asset_1(10));
+        assert_eq!(assets[2], asset_2(1));
+        assert_eq!(assets[3], asset_2(19));
+    }
+
+    #[test]
+    fn test_compute_assets_issuance() {
+        let p2pkh = Builder::from(
+            hex::decode("76a914010966776006953d5567439e5e39f86a0d273bee88ac").unwrap(),
+        )
+        .into_script();
+        let prev_outs = vec![
+            (
+                TxOut {
+                    value: 1000,
+                    script_pubkey: p2pkh,
+                },
+                None,
+            ),
+            (TxOut::default(), None),
+        ];
+        let index = 3;
+        let valid_marker = TxOut {
+            value: 0,
+            script_pubkey: Builder::from(
+                hex::decode(
+                    "6a244f410100030a01131b753d68747470733a2f2f6370722e736d2f35596753553150672d71",
+                )
+                .unwrap(),
+            )
+            .into_script(),
+        };
+
+        let txn = Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![default_input(0), default_input(1)],
+            output: vec![
+                TxOut::default(),
+                TxOut::default(),
+                TxOut::default(),
+                valid_marker,
+            ],
+        };
+        let quantities = vec![10, 1, 19];
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        assert_eq!(assets.len(), 4);
+        assert_eq!(assets[0], asset_1(10));
+        assert_eq!(assets[1], asset_1(1));
+        assert_eq!(assets[2], asset_1(19));
+        assert_eq!(assets[3], None);
+    }
+
+    #[test]
+    fn test_compute_assets_both() {
+        // Open Assets transaction in
+        // https://github.com/OpenAssets/open-assets-protocol/blob/master/specification.mediawiki#example-1
+        let p2pkh = Builder::from(
+            hex::decode("76a914010966776006953d5567439e5e39f86a0d273bee88ac").unwrap(),
+        )
+        .into_script();
+        let prev_outs = vec![
+            (
+                TxOut {
+                    value: 1000,
+                    script_pubkey: p2pkh,
+                },
+                asset_2(3),
+            ),
+            (TxOut::default(), asset_2(2)),
+            (TxOut::default(), None),
+            (TxOut::default(), asset_2(5)),
+            (TxOut::default(), asset_2(3)),
+            (TxOut::default(), asset_3(9)),
+        ];
+        let index = 2;
+        let valid_marker = TxOut {
+            value: 0,
+            script_pubkey: Builder::from(
+                hex::decode(
+                    "6a244f41010006000a060007031b753d68747470733a2f2f6370722e736d2f35596753553150672d71",
+                )
+                .unwrap(),
+            )
+            .into_script(),
+        };
+
+        let txn = Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![
+                default_input(0),
+                default_input(1),
+                default_input(2),
+                default_input(3),
+                default_input(4),
+                default_input(5),
+            ],
+            output: vec![
+                TxOut::default(),
+                TxOut::default(),
+                valid_marker,
+                TxOut::default(),
+                TxOut::default(),
+                TxOut::default(),
+                TxOut::default(),
+            ],
+        };
+        let quantities = vec![0, 10, 6, 0, 7, 3];
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        assert_eq!(assets.len(), 7);
+        assert_eq!(assets[0], None);
+        assert_eq!(assets[1], asset_1(10));
+        assert_eq!(assets[2], None);
+        assert_eq!(assets[3], asset_2(6));
+        assert_eq!(assets[4], None);
+        assert_eq!(assets[5], asset_2(7));
+        assert_eq!(assets[6], asset_3(3));
+    }
+
+    #[test]
+    fn test_compute_assets_contains_uncolored() {
+        let prev_outs = vec![
+            (TxOut::default(), asset_1(2)),
+            (TxOut::default(), asset_1(5)),
+            (TxOut::default(), asset_2(9)),
+        ];
+        let index = 0;
+        let valid_marker = TxOut {
+            value: 0,
+            script_pubkey: Builder::from(
+                hex::decode(
+                    "6a244f410100030703031b753d68747470733a2f2f6370722e736d2f35596753553150672d71",
+                )
+                .unwrap(),
+            )
+            .into_script(),
+        };
+
+        let txn = Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![default_input(0), default_input(1), default_input(2)],
+            output: vec![
+                valid_marker,
+                TxOut::default(),
+                TxOut::default(),
+                TxOut::default(),
+                TxOut::default(),
+                TxOut::default(),
+            ],
+        };
+        let quantities = vec![7, 3, 3];
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        assert_eq!(assets.len(), 6);
+        assert_eq!(assets[0], None);
+        assert_eq!(assets[1], asset_1(7));
+        assert_eq!(assets[2], asset_2(3));
+        assert_eq!(assets[3], asset_2(3));
+        assert_eq!(assets[4], None);
+        assert_eq!(assets[5], None);
     }
 }
