@@ -225,10 +225,35 @@ impl TransactionCache {
     }
 }
 
+pub struct AssetCache {
+    map: Mutex<LruCache<Sha256dHash, Vec<Option<Asset>>>>,
+}
+
+impl AssetCache {
+    pub fn new(capacity: usize) -> AssetCache {
+        AssetCache {
+            map: Mutex::new(LruCache::new(capacity)),
+        }
+    }
+
+    fn get_or_else<F>(&self, txid: &Sha256dHash, load_assets_func: F) -> Result<Vec<Option<Asset>>>
+    where
+        F: FnOnce() -> Result<Vec<Option<Asset>>>,
+    {
+        if let Some(assets) = self.map.lock().unwrap().get(txid) {
+            return Ok(assets.clone());
+        }
+        let assets = load_assets_func()?;
+        self.map.lock().unwrap().put(*txid, assets.clone());
+        Ok(assets)
+    }
+}
+
 pub struct Query {
     app: Arc<App>,
     tracker: RwLock<Tracker>,
     tx_cache: TransactionCache,
+    asset_cache: AssetCache,
     txid_limit: usize,
 }
 
@@ -237,12 +262,14 @@ impl Query {
         app: Arc<App>,
         metrics: &Metrics,
         tx_cache: TransactionCache,
+        asset_cache: AssetCache,
         txid_limit: usize,
     ) -> Arc<Query> {
         Arc::new(Query {
             app,
             tracker: RwLock::new(Tracker::new(metrics)),
             tx_cache,
+            asset_cache,
             txid_limit,
         })
     }
