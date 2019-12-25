@@ -6,6 +6,7 @@ use crypto::sha2::Sha256;
 use hex;
 use lru::LruCache;
 use openassets::openassets::marker_output::TxOutExt;
+use serde::{Serialize, Serializer};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -49,7 +50,28 @@ impl FundingOutput {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+impl FundingOutput {
+    pub fn to_json(&self) -> Value {
+        if self.asset.is_none() {
+            json!({
+                "height": self.height,
+                "tx_pos": self.output_index,
+                "tx_hash": self.txn_id.to_hex(),
+                "value": self.value,
+            })
+        } else {
+            json!({
+                "height": self.height,
+                "tx_pos": self.output_index,
+                "tx_hash": self.txn_id.to_hex(),
+                "value": self.value,
+                "asset": self.asset.as_ref().expect("failed to read asset"),
+            })
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
 pub struct Asset {
     pub asset_id: AssetId,
     pub asset_quantity: u64,
@@ -69,6 +91,15 @@ impl AssetId {
     pub fn from_hex(hex: &str) -> AssetId {
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         AssetId::new(&script)
+    }
+}
+
+impl Serialize for AssetId {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.hash.serialize(serializer)
     }
 }
 
@@ -713,8 +744,51 @@ mod tests {
     use tapyrus::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
 
     use crate::errors::*;
+    use crate::query::FundingOutput;
     use crate::query::{Asset, AssetId};
     use crate::query::{AssetCache, Query};
+
+    #[test]
+    fn test_to_json() {
+        let txid = Sha256dHash::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let output = FundingOutput::build(txid, 0, 1, 2, None);
+        let value = output.to_json();
+        assert_json_eq!(
+            value,
+            json!({
+                "height": 0,
+                "tx_pos": 1,
+                "value": 2,
+                "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+            }),
+        );
+    }
+
+    #[test]
+    fn test_asset_to_json() {
+        let txid = Sha256dHash::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let output = FundingOutput::build(txid, 0, 1, 2, asset_1(3));
+        let value = output.to_json();
+        assert_json_eq!(
+            value,
+            json!({
+                "height": 0,
+                "tx_pos": 1,
+                "value": 2,
+                "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+                "asset": json!({
+                    "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+                    "asset_quantity": 3
+                })
+            }),
+        );
+    }
 
     #[test]
     fn test_asset_cache() {
