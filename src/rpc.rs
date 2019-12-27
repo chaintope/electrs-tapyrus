@@ -64,6 +64,26 @@ fn unspent_from_status(status: &Status) -> Value {
     ))
 }
 
+fn colored_unspent_from_status(status: &Status) -> Value {
+    json!(Value::Array(
+        status
+            .colored_unspent()
+            .into_iter()
+            .map(|out| out.to_json())
+            .collect()
+    ))
+}
+
+fn uncolored_unspent_from_status(status: &Status) -> Value {
+    json!(Value::Array(
+        status
+            .uncolored_unspent()
+            .into_iter()
+            .map(|out| out.to_json())
+            .collect()
+    ))
+}
+
 struct Connection {
     query: Arc<Query>,
     last_header_entry: Option<HeaderEntry>,
@@ -226,6 +246,20 @@ impl Connection {
         Ok(unspent_from_status(&self.query.status(&script_hash[..])?))
     }
 
+    fn blockchain_scripthash_listcoloredunspent(&self, params: &[Value]) -> Result<Value> {
+        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        Ok(colored_unspent_from_status(
+            &self.query.status(&script_hash[..])?,
+        ))
+    }
+
+    fn blockchain_scripthash_listuncoloredunspent(&self, params: &[Value]) -> Result<Value> {
+        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        Ok(uncolored_unspent_from_status(
+            &self.query.status(&script_hash[..])?,
+        ))
+    }
+
     fn blockchain_transaction_broadcast(&self, params: &[Value]) -> Result<Value> {
         let tx = params.get(0).chain_err(|| "missing tx")?;
         let tx = tx.as_str().chain_err(|| "non-string tx")?;
@@ -295,6 +329,12 @@ impl Connection {
             "blockchain.scripthash.get_balance" => self.blockchain_scripthash_get_balance(&params),
             "blockchain.scripthash.get_history" => self.blockchain_scripthash_get_history(&params),
             "blockchain.scripthash.listunspent" => self.blockchain_scripthash_listunspent(&params),
+            "blockchain.scripthash.listcoloredunspent" => {
+                self.blockchain_scripthash_listcoloredunspent(&params)
+            }
+            "blockchain.scripthash.listuncoloredunspent" => {
+                self.blockchain_scripthash_listuncoloredunspent(&params)
+            }
             "blockchain.scripthash.subscribe" => self.blockchain_scripthash_subscribe(&params),
             "blockchain.transaction.broadcast" => self.blockchain_transaction_broadcast(&params),
             "blockchain.transaction.get" => self.blockchain_transaction_get(&params),

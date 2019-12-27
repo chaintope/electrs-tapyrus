@@ -48,6 +48,22 @@ impl FundingOutput {
             asset,
         }
     }
+
+    pub fn colored(&self) -> Option<&Self> {
+        if self.asset.is_some() {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
+    pub fn uncolored(&self) -> Option<&Self> {
+        if self.asset.is_none() {
+            Some(self)
+        } else {
+            None
+        }
+    }
 }
 
 impl FundingOutput {
@@ -156,6 +172,17 @@ impl Status {
             .collect::<Vec<&FundingOutput>>();
         outputs.sort_unstable_by_key(|out| out.height);
         outputs
+    }
+
+    pub fn colored_unspent(&self) -> Vec<&FundingOutput> {
+        self.unspent().iter().filter_map(|&o| o.colored()).collect()
+    }
+
+    pub fn uncolored_unspent(&self) -> Vec<&FundingOutput> {
+        self.unspent()
+            .iter()
+            .filter_map(|&o| o.uncolored())
+            .collect()
     }
 
     pub fn hash(&self) -> Option<FullHash> {
@@ -739,9 +766,91 @@ mod tests {
     use tapyrus::network::constants::Network;
 
     use crate::errors::*;
-    use crate::query::FundingOutput;
-    use crate::query::{Asset, AssetId};
-    use crate::query::{AssetCache, Query};
+    use crate::query::{Asset, AssetCache, AssetId, FundingOutput, Query, SpendingInput, Status};
+
+    fn status() -> Status {
+        let txid1 = Sha256dHash::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let txid2 = Sha256dHash::from_str(
+            "1111111111111111111111111111111111111111111111111111111111111111",
+        )
+        .unwrap();
+
+        let confirmed_fundings: Vec<FundingOutput> = vec![
+            FundingOutput::build(txid1, 0, 1, 2, None),
+            FundingOutput::build(txid1, 3, 4, 5, asset_1(6)),
+            FundingOutput::build(txid1, 7, 8, 9, asset_1(10)),
+        ];
+        let confirmed_spendings: Vec<SpendingInput> = Vec::new();
+        let unconfirmed_fundings: Vec<FundingOutput> = vec![
+            FundingOutput::build(txid2, 11, 12, 13, None),
+            FundingOutput::build(txid2, 14, 15, 16, asset_1(17)),
+            FundingOutput::build(txid2, 18, 19, 20, asset_1(21)),
+        ];
+        let unconfirmed_spendings: Vec<SpendingInput> = Vec::new();
+        Status {
+            confirmed: (confirmed_fundings, confirmed_spendings),
+            mempool: (unconfirmed_fundings, unconfirmed_spendings),
+        }
+    }
+
+    #[test]
+    fn test_colored_unspent() {
+        let txid1 = Sha256dHash::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let txid2 = Sha256dHash::from_str(
+            "1111111111111111111111111111111111111111111111111111111111111111",
+        )
+        .unwrap();
+
+        let status = status();
+        let unspents = status.colored_unspent();
+        assert_eq!(unspents.len(), 4);
+        assert_eq!(unspents[0].txn_id, txid1);
+        assert_eq!(unspents[0].height, 3);
+        assert_eq!(unspents[0].value, 5);
+        assert_eq!(unspents[0].asset.as_ref().unwrap().asset_quantity, 6);
+        assert_eq!(unspents[1].txn_id, txid1);
+        assert_eq!(unspents[1].height, 7);
+        assert_eq!(unspents[1].value, 9);
+        assert_eq!(unspents[1].asset.as_ref().unwrap().asset_quantity, 10);
+        assert_eq!(unspents[2].txn_id, txid2);
+        assert_eq!(unspents[2].height, 14);
+        assert_eq!(unspents[2].value, 16);
+        assert_eq!(unspents[2].asset.as_ref().unwrap().asset_quantity, 17);
+        assert_eq!(unspents[3].txn_id, txid2);
+        assert_eq!(unspents[3].height, 18);
+        assert_eq!(unspents[3].value, 20);
+        assert_eq!(unspents[3].asset.as_ref().unwrap().asset_quantity, 21);
+    }
+
+    #[test]
+    fn test_uncolored_unspent() {
+        let txid1 = Sha256dHash::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let txid2 = Sha256dHash::from_str(
+            "1111111111111111111111111111111111111111111111111111111111111111",
+        )
+        .unwrap();
+
+        let status = status();
+        let unspents = status.uncolored_unspent();
+        assert_eq!(unspents.len(), 2);
+        assert_eq!(unspents[0].txn_id, txid1);
+        assert_eq!(unspents[0].height, 0);
+        assert_eq!(unspents[0].value, 2);
+        assert_eq!(unspents[0].asset, None);
+        assert_eq!(unspents[1].txn_id, txid2);
+        assert_eq!(unspents[1].height, 11);
+        assert_eq!(unspents[1].value, 13);
+        assert_eq!(unspents[1].asset, None);
+    }
 
     #[test]
     fn test_to_json() {
