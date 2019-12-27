@@ -31,18 +31,22 @@ A dictionary with keys confirmed, unconfirmed and assets. The value of confirmed
 {
   "confirmed": "1.03873966",
   "unconfirmed": "0.236844"
-  "assets": [
+  "colored": [
     {
-      "asset_type": "4F41",
       "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
-      "asset_quantity": 100
+      "confirmed_asset_quantity": 100,
+      "unconfirmed_asset_quantity": 10,
     },
     {
-      "asset_type": "4F41",
       "asset_id": "f8cc4f23cdedeca2c429aef5b3345e666c411ece",
-      "asset_quantity": 200
+      "confirmed_asset_quantity": 100,
+      "unconfirmed_asset_quantity": 10,
     }
-  ]
+  ],
+  "uncolored": {
+    "confirmed": 1.01,
+    "unconfirmed": 0.0001,
+  }
 }
 ```
 
@@ -78,10 +82,6 @@ A list of unspent outputs in blockchain order. This function takes the mempool i
 
     The output’s value in minimum coin units (satoshis).
 
-- asset_type
-
-    The asset type as a hexadecimal string. "4F41" for the Open Assets. null if the utxo is uncolored.
-
 - asset_id
 
     The asset id as a hexadecimal string. This is a 160 bits hash for the Open Assets. null if the utxo is uncolored.
@@ -99,19 +99,17 @@ A list of unspent outputs in blockchain order. This function takes the mempool i
     "tx_pos": 0,
     "value": 45318048,
     "tx_hash": "9f2c45a12db0144909b5db269415f7319179105982ac70ed80d76ea79d923ebf",
-    "height": 437146
-    "asset_type": "4F41",
-    "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
-    "asset_quantity": 10
+    "height": 437146,
+    "asset" {
+      "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+      "asset_quantity": 10
+    }
   },
   {
     "tx_pos": 0,
     "value": 919195,
     "tx_hash": "3d2290c93436a3e964cfc2f0950174d8847b1fbe3946432c4784e168da0f019f",
     "height": 441696
-    "asset_type": null,
-    "asset_id": null,
-    "asset_quantity": 0
   }
 ]
 ```
@@ -191,9 +189,10 @@ When verbose is true:
                                "reqSigs": 1,
                                "type": "pubkeyhash"},
              "value": 0.1360904,
-             "asset_type": "4F41",
-             "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
-             "asset_quantity": 100
+             "asset" {
+              "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+              "asset_quantity": 100
+             }
             }]}
 ```
 
@@ -228,10 +227,6 @@ Return an ordered list of colored UTXOs sent to a scripthash.
 
   The output’s value in minimum coin units (satoshis).
 
-- asset_type
-
-  The asset type as a hexadecimal string. "4F41" for the Open Assets.
-
 - asset_id
 
   The asset id as a hexadecimal string. This is a 160 bits hash for the Open Assets
@@ -249,18 +244,20 @@ Return an ordered list of colored UTXOs sent to a scripthash.
     "value": 45318048,
     "tx_hash": "9f2c45a12db0144909b5db269415f7319179105982ac70ed80d76ea79d923ebf",
     "height": 437146
-    "asset_type": "4F41",
-    "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
-    "asset_quantity": 100
+    "asset": {
+      "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+      "asset_quantity": 100
+    }
   },
   {
     "tx_pos": 0,
     "value": 919195,
     "tx_hash": "3d2290c93436a3e964cfc2f0950174d8847b1fbe3946432c4784e168da0f019f",
     "height": 441696,
-    "asset_type": "4F41",
-    "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
-    "asset_quantity": 10
+    "asset": {
+      "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+      "asset_quantity": 10
+    }
   }
 ]
 ```
