@@ -33,12 +33,12 @@ A dictionary with keys confirmed, unconfirmed and assets. The value of confirmed
   "unconfirmed": "0.236844"
   "colored": [
     {
-      "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+      "asset_id": "ALn3aK1fSuG27N96UGYB1kUYUpGKRhBuBC",
       "confirmed_asset_quantity": 100,
       "unconfirmed_asset_quantity": 10,
     },
     {
-      "asset_id": "f8cc4f23cdedeca2c429aef5b3345e666c411ece",
+      "asset_id": "ALVYPzjZjSLoT4xAHJ7x38RcHWNatP4Mba",
       "confirmed_asset_quantity": 100,
       "unconfirmed_asset_quantity": 10,
     }
@@ -100,8 +100,8 @@ A list of unspent outputs in blockchain order. This function takes the mempool i
     "value": 45318048,
     "tx_hash": "9f2c45a12db0144909b5db269415f7319179105982ac70ed80d76ea79d923ebf",
     "height": 437146,
-    "asset" {
-      "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+    "asset": {
+      "asset_id": "ALn3aK1fSuG27N96UGYB1kUYUpGKRhBuBC",
       "asset_quantity": 10
     }
   },
@@ -189,9 +189,9 @@ When verbose is true:
                                "reqSigs": 1,
                                "type": "pubkeyhash"},
              "value": 0.1360904,
-             "asset" {
-              "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
-              "asset_quantity": 100
+             "asset": {
+               "asset_id": "ALVYPzjZjSLoT4xAHJ7x38RcHWNatP4Mba",
+               "asset_quantity": 100
              }
             }]}
 ```
@@ -245,7 +245,7 @@ Return an ordered list of colored UTXOs sent to a scripthash.
     "tx_hash": "9f2c45a12db0144909b5db269415f7319179105982ac70ed80d76ea79d923ebf",
     "height": 437146
     "asset": {
-      "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+      "asset_id": "ALVYPzjZjSLoT4xAHJ7x38RcHWNatP4Mba",
       "asset_quantity": 100
     }
   },
@@ -255,7 +255,7 @@ Return an ordered list of colored UTXOs sent to a scripthash.
     "tx_hash": "3d2290c93436a3e964cfc2f0950174d8847b1fbe3946432c4784e168da0f019f",
     "height": 441696,
     "asset": {
-      "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+      "asset_id": "ALVYPzjZjSLoT4xAHJ7x38RcHWNatP4Mba",
       "asset_quantity": 10
     }
   }

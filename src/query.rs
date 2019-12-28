@@ -3,18 +3,18 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin_hashes::Hash;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use hex;
 use lru::LruCache;
+use openassets::openassets::asset_id::AssetId;
 use openassets::openassets::marker_output::TxOutExt;
+use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
-use tapyrus::blockdata::script::Builder;
-use tapyrus::blockdata::script::Script;
 use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::blockdata::transaction::TxOut;
 use tapyrus::consensus::encode::deserialize;
+use tapyrus::network::constants::Network;
 
 use crate::app::App;
 use crate::errors::*;
@@ -71,35 +71,21 @@ impl FundingOutput {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Asset {
     pub asset_id: AssetId,
     pub asset_quantity: u64,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct AssetId {
-    pub hash: bitcoin_hashes::hash160::Hash,
-}
-
-impl AssetId {
-    pub fn new(script: &Script) -> AssetId {
-        AssetId {
-            hash: bitcoin_hashes::hash160::Hash::hash(&script.to_bytes()),
-        }
-    }
-    pub fn from_hex(hex: &str) -> AssetId {
-        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
-        AssetId::new(&script)
-    }
-}
-
-impl Serialize for AssetId {
+impl Serialize for Asset {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        self.hash.serialize(serializer)
+        let mut state = serializer.serialize_struct("Asset", 2)?;
+        state.serialize_field("asset_id", &format!("{}", &self.asset_id))?;
+        state.serialize_field("asset_quantity", &self.asset_quantity)?;
+        state.end()
     }
 }
 
@@ -411,7 +397,13 @@ impl Query {
                             self.get_output(&input.previous_output.txid, input.previous_output.vout)
                         })
                         .collect();
-                    return Query::compute_assets(prev_outs, i, txn, marker.quantities);
+                    return Query::compute_assets(
+                        prev_outs,
+                        i,
+                        txn,
+                        marker.quantities,
+                        self.app.network_type(),
+                    );
                 }
             }
             txn.output.iter().map(|_| None).collect()
@@ -423,6 +415,7 @@ impl Query {
         marker_output_index: usize,
         txn: &Transaction,
         quantities: Vec<u64>,
+        network_type: Network,
     ) -> Vec<Option<Asset>> {
         assert!(quantities.len() <= txn.output.len() - 1);
         assert!(!prev_outs.is_empty());
@@ -436,6 +429,7 @@ impl Query {
                 .expect("previous outputs is not found")
                 .0
                 .script_pubkey,
+            network_type,
         );
         for i in 0..marker_output_index {
             let asset = if i < quantities.len() && quantities[i] > 0 {
@@ -742,6 +736,7 @@ mod tests {
     use tapyrus::blockdata::script::Builder;
     use tapyrus::blockdata::script::Script;
     use tapyrus::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
+    use tapyrus::network::constants::Network;
 
     use crate::errors::*;
     use crate::query::FundingOutput;
@@ -783,7 +778,7 @@ mod tests {
                 "value": 2,
                 "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
                 "asset": json!({
-                    "asset_id": "36e0ea8e93eaa0285d641305f4c81e563aa570a2",
+                    "asset_id": "ALn3aK1fSuG27N96UGYB1kUYUpGKRhBuBC",
                     "asset_quantity": 3
                 })
             }),
@@ -798,7 +793,7 @@ mod tests {
         )
         .unwrap();
         let asset = Asset {
-            asset_id: AssetId::new(&Script::new()),
+            asset_id: AssetId::new(&Script::new(), Network::Bitcoin),
             asset_quantity: 1,
         };
         let result = asset_cache.get_or_else(&txid, || Ok(vec![Some(asset.clone())]));
@@ -828,22 +823,28 @@ mod tests {
     }
 
     fn asset_1(quantity: u64) -> Option<Asset> {
+        let hex = "76a914010966776006953d5567439e5e39f86a0d273bee88ac";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
-            asset_id: AssetId::from_hex("76a914010966776006953d5567439e5e39f86a0d273bee88ac"),
+            asset_id: AssetId::new(&script, Network::Bitcoin),
             asset_quantity: quantity,
         })
     }
 
     fn asset_2(quantity: u64) -> Option<Asset> {
+        let hex = "76a914b60fd86c7464b08d83d98ebeb59655d71be3b22688ac";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
-            asset_id: AssetId::from_hex("76a914b60fd86c7464b08d83d98ebeb59655d71be3b22688ac"),
+            asset_id: AssetId::new(&script, Network::Bitcoin),
             asset_quantity: quantity,
         })
     }
 
     fn asset_3(quantity: u64) -> Option<Asset> {
+        let hex = "76a9149f00983b75904599a5e9c2e53c8b1002fc42e9ac88ac";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
-            asset_id: AssetId::from_hex("76a9149f00983b75904599a5e9c2e53c8b1002fc42e9ac88ac"),
+            asset_id: AssetId::new(&script, Network::Bitcoin),
             asset_quantity: quantity,
         })
     }
@@ -894,7 +895,7 @@ mod tests {
             ],
         };
         let quantities = vec![10, 1, 19];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
         assert_eq!(assets.len(), 4);
         assert_eq!(assets[0], None);
         assert_eq!(assets[1], asset_1(10));
@@ -942,7 +943,7 @@ mod tests {
             ],
         };
         let quantities = vec![10, 1, 19];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
         assert_eq!(assets.len(), 4);
         assert_eq!(assets[0], asset_1(10));
         assert_eq!(assets[1], asset_1(1));
@@ -1006,7 +1007,7 @@ mod tests {
             ],
         };
         let quantities = vec![0, 10, 6, 0, 7, 3];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
         assert_eq!(assets.len(), 7);
         assert_eq!(assets[0], None);
         assert_eq!(assets[1], asset_1(10));
@@ -1050,7 +1051,7 @@ mod tests {
             ],
         };
         let quantities = vec![7, 3, 3];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities);
+        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
         assert_eq!(assets.len(), 6);
         assert_eq!(assets[0], None);
         assert_eq!(assets[1], asset_1(7));
