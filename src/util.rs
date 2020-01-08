@@ -309,6 +309,7 @@ mod tests {
             merkle_root,
             im_merkle_root,
             time: 0,
+            aggregated_public_key: None,
             proof: Signature {
                 signature: Script::new(),
             },
@@ -321,6 +322,7 @@ mod tests {
                 merkle_root,
                 im_merkle_root,
                 time: 0,
+                aggregated_public_key: None,
                 proof: Signature {
                     signature: Script::new(),
                 },
