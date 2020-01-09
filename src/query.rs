@@ -100,15 +100,10 @@ impl Serialize for Asset {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Asset", 2)?;
+        let mut state = serializer.serialize_struct("Asset", 3)?;
         state.serialize_field("asset_id", &format!("{}", &self.asset_id))?;
         state.serialize_field("asset_quantity", &self.asset_quantity)?;
-        let raw_metadata = serialize(&self.metadata);
-        //raw_metadata contains data length (VarInt). The length must be removed to serialize for json.
-        let deserialized: Vec<u8> =
-            deserialize(&raw_metadata[..]).expect("faild to parse metadata");
-        let hex = hex::encode(deserialized);
-        state.serialize_field("metadata", &hex)?;
+        state.serialize_field("metadata", &self.metadata)?;
         state.end()
     }
 }
@@ -900,11 +895,14 @@ mod tests {
                 "tx_pos": 1,
                 "value": 2,
                 "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-                "asset": json!({
+                "asset": {
                     "asset_id": "ALn3aK1fSuG27N96UGYB1kUYUpGKRhBuBC",
                     "asset_quantity": 3,
-                    "metadata": "753d68747470733a2f2f6370722e736d2f35596753553150672d71"
-                })
+                    "metadata": {
+                        "hex": "753d68747470733a2f2f6370722e736d2f35596753553150672d71",
+                        "utf8": "u=https://cpr.sm/5YgSU1Pg-q"
+                    }
+                }
             }),
         );
     }
