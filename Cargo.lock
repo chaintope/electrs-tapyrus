@@ -363,7 +363,7 @@ dependencies = [
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lru 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "openassets 0.1.0 (git+https://github.com/Yamaguchi/openassets-tapyrus/?branch=rename_bitcoin_to_tapyrus)",
+ "openassets-tapyrus 0.1.0 (git+https://github.com/chaintope/openassets-tapyrus/)",
  "page_size 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "prometheus 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocksdb 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -635,14 +635,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "openassets"
+name = "openassets-tapyrus"
 version = "0.1.0"
-source = "git+https://github.com/Yamaguchi/openassets-tapyrus/?branch=rename_bitcoin_to_tapyrus#918198ee1c67694f207173e1222fd47852b68c6a"
+source = "git+https://github.com/chaintope/openassets-tapyrus/#062f42763a86c76d89704d723b6a3d13493663df"
 dependencies = [
  "bitcoin_hashes 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "leb128 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "tapyrus 0.1.0 (git+https://github.com/chaintope/rust-tapyrus/)",
 ]
 
@@ -1029,7 +1031,7 @@ dependencies = [
 [[package]]
 name = "tapyrus"
 version = "0.1.0"
-source = "git+https://github.com/chaintope/rust-tapyrus/#12047544ab64032145aff934ee713ae72540b06e"
+source = "git+https://github.com/chaintope/rust-tapyrus/#0346bec120fc8fcceab1b9b2292faba61327a3eb"
 dependencies = [
  "bitcoin-bech32 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_hashes 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1300,7 +1302,7 @@ dependencies = [
 "checksum num-integer 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)" = "b85e541ef8255f6cf42bbfe4ef361305c6c135d10919ecc26126c4e5ae94bc09"
 "checksum num-traits 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "6ba9a427cfca2be13aa6f6403b0b7e7368fe982bfa16fccc450ce74c46cd9b32"
 "checksum num_cpus 1.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bcef43580c035376c0705c42792c294b66974abbfd2789b511784023f71f3273"
-"checksum openassets 0.1.0 (git+https://github.com/Yamaguchi/openassets-tapyrus/?branch=rename_bitcoin_to_tapyrus)" = "<none>"
+"checksum openassets-tapyrus 0.1.0 (git+https://github.com/chaintope/openassets-tapyrus/)" = "<none>"
 "checksum page_size 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f89ef58b3d32420dbd1a43d2f38ae92f6239ef12bb556ab09ca55445f5a67242"
 "checksum parse_arg 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0aa6995ee52a637a52261de3240eb3ffec0cfa24cb917cd03fc0365691ca24ae"
 "checksum peeking_take_while 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"

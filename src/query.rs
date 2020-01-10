@@ -4,8 +4,8 @@ use bitcoin_hashes::Hash;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use lru::LruCache;
-use openassets::openassets::asset_id::AssetId;
-use openassets::openassets::marker_output::TxOutExt;
+use openassets_tapyrus::openassets::asset_id::AssetId;
+use openassets_tapyrus::openassets::marker_output::{Metadata, TxOutExt};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::blockdata::transaction::TxOut;
 use tapyrus::consensus::encode::deserialize;
+use tapyrus::consensus::encode::serialize;
 use tapyrus::network::constants::Network;
 
 use crate::app::App;
@@ -91,6 +92,7 @@ impl FundingOutput {
 pub struct Asset {
     pub asset_id: AssetId,
     pub asset_quantity: u64,
+    pub metadata: Metadata,
 }
 
 impl Serialize for Asset {
@@ -98,9 +100,10 @@ impl Serialize for Asset {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Asset", 2)?;
+        let mut state = serializer.serialize_struct("Asset", 3)?;
         state.serialize_field("asset_id", &format!("{}", &self.asset_id))?;
         state.serialize_field("asset_quantity", &self.asset_quantity)?;
+        state.serialize_field("metadata", &self.metadata)?;
         state.end()
     }
 }
@@ -430,6 +433,7 @@ impl Query {
                         txn,
                         marker.quantities,
                         self.app.network_type(),
+                        &marker.metadata,
                     );
                 }
             }
@@ -443,6 +447,7 @@ impl Query {
         txn: &Transaction,
         quantities: Vec<u64>,
         network_type: Network,
+        metadata: &Metadata,
     ) -> Vec<Option<Asset>> {
         assert!(quantities.len() <= txn.output.len() - 1);
         assert!(!prev_outs.is_empty());
@@ -463,6 +468,7 @@ impl Query {
                 Some(Asset {
                     asset_id: issuance_asset_id.clone(),
                     asset_quantity: quantities[i],
+                    metadata: metadata.clone(),
                 })
             } else {
                 None
@@ -507,6 +513,7 @@ impl Query {
                 Some(Asset {
                     asset_id: asset_id.unwrap(),
                     asset_quantity: quantity,
+                    metadata: metadata.clone(),
                 })
             } else {
                 None
@@ -759,10 +766,12 @@ impl Query {
 mod tests {
     use bitcoin_hashes::sha256d::Hash as Sha256dHash;
     use hex;
+    use openassets_tapyrus::openassets::marker_output::{Metadata, Payload};
     use std::str::FromStr;
     use tapyrus::blockdata::script::Builder;
     use tapyrus::blockdata::script::Script;
     use tapyrus::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
+    use tapyrus::consensus::deserialize;
     use tapyrus::network::constants::Network;
 
     use crate::errors::*;
@@ -780,14 +789,14 @@ mod tests {
 
         let confirmed_fundings: Vec<FundingOutput> = vec![
             FundingOutput::build(txid1, 0, 1, 2, None),
-            FundingOutput::build(txid1, 3, 4, 5, asset_1(6)),
-            FundingOutput::build(txid1, 7, 8, 9, asset_1(10)),
+            FundingOutput::build(txid1, 3, 4, 5, asset_1(6, empty_metadata())),
+            FundingOutput::build(txid1, 7, 8, 9, asset_1(10, empty_metadata())),
         ];
         let confirmed_spendings: Vec<SpendingInput> = Vec::new();
         let unconfirmed_fundings: Vec<FundingOutput> = vec![
             FundingOutput::build(txid2, 11, 12, 13, None),
-            FundingOutput::build(txid2, 14, 15, 16, asset_1(17)),
-            FundingOutput::build(txid2, 18, 19, 20, asset_1(21)),
+            FundingOutput::build(txid2, 14, 15, 16, asset_1(17, empty_metadata())),
+            FundingOutput::build(txid2, 18, 19, 20, asset_1(21, empty_metadata())),
         ];
         let unconfirmed_spendings: Vec<SpendingInput> = Vec::new();
         Status {
@@ -877,7 +886,7 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000000",
         )
         .unwrap();
-        let output = FundingOutput::build(txid, 0, 1, 2, asset_1(3));
+        let output = FundingOutput::build(txid, 0, 1, 2, asset_1(3, url_metadata()));
         let value = output.to_json();
         assert_json_eq!(
             value,
@@ -886,10 +895,14 @@ mod tests {
                 "tx_pos": 1,
                 "value": 2,
                 "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-                "asset": json!({
+                "asset": {
                     "asset_id": "ALn3aK1fSuG27N96UGYB1kUYUpGKRhBuBC",
-                    "asset_quantity": 3
-                })
+                    "asset_quantity": 3,
+                    "metadata": {
+                        "hex": "753d68747470733a2f2f6370722e736d2f35596753553150672d71",
+                        "utf8": "u=https://cpr.sm/5YgSU1Pg-q"
+                    }
+                }
             }),
         );
     }
@@ -904,6 +917,7 @@ mod tests {
         let asset = Asset {
             asset_id: AssetId::new(&Script::new(), Network::Bitcoin),
             asset_quantity: 1,
+            metadata: empty_metadata(),
         };
         let result = asset_cache.get_or_else(&txid, || Ok(vec![Some(asset.clone())]));
         match result {
@@ -931,30 +945,33 @@ mod tests {
         }
     }
 
-    fn asset_1(quantity: u64) -> Option<Asset> {
+    fn asset_1(quantity: u64, metadata: Metadata) -> Option<Asset> {
         let hex = "76a914010966776006953d5567439e5e39f86a0d273bee88ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
             asset_id: AssetId::new(&script, Network::Bitcoin),
             asset_quantity: quantity,
+            metadata: metadata,
         })
     }
 
-    fn asset_2(quantity: u64) -> Option<Asset> {
+    fn asset_2(quantity: u64, metadata: Metadata) -> Option<Asset> {
         let hex = "76a914b60fd86c7464b08d83d98ebeb59655d71be3b22688ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
             asset_id: AssetId::new(&script, Network::Bitcoin),
             asset_quantity: quantity,
+            metadata: metadata,
         })
     }
 
-    fn asset_3(quantity: u64) -> Option<Asset> {
+    fn asset_3(quantity: u64, metadata: Metadata) -> Option<Asset> {
         let hex = "76a9149f00983b75904599a5e9c2e53c8b1002fc42e9ac88ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
             asset_id: AssetId::new(&script, Network::Bitcoin),
             asset_quantity: quantity,
+            metadata: metadata,
         })
     }
 
@@ -974,11 +991,27 @@ mod tests {
         }
     }
 
+    fn empty_metadata() -> Metadata {
+        let payload_bytes = hex::decode("4f4101000000").unwrap();
+        let payload: std::result::Result<Payload, tapyrus::consensus::encode::Error> =
+            deserialize(&payload_bytes);
+        payload.unwrap().metadata
+    }
+
+    fn url_metadata() -> Metadata {
+        let payload_bytes =
+            hex::decode("4f4101000364007b1b753d68747470733a2f2f6370722e736d2f35596753553150672d71")
+                .unwrap();
+        let payload: std::result::Result<Payload, tapyrus::consensus::encode::Error> =
+            deserialize(&payload_bytes);
+        payload.unwrap().metadata
+    }
+
     #[test]
     fn test_compute_assets_transfer() {
         let prev_outs = vec![
-            (TxOut::default(), asset_1(10)),
-            (TxOut::default(), asset_2(20)),
+            (TxOut::default(), asset_1(10, empty_metadata())),
+            (TxOut::default(), asset_2(20, empty_metadata())),
         ];
         let index = 0;
 
@@ -1004,12 +1037,19 @@ mod tests {
             ],
         };
         let quantities = vec![10, 1, 19];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
+        let assets = Query::compute_assets(
+            prev_outs,
+            index,
+            &txn,
+            quantities,
+            Network::Bitcoin,
+            &url_metadata(),
+        );
         assert_eq!(assets.len(), 4);
         assert_eq!(assets[0], None);
-        assert_eq!(assets[1], asset_1(10));
-        assert_eq!(assets[2], asset_2(1));
-        assert_eq!(assets[3], asset_2(19));
+        assert_eq!(assets[1], asset_1(10, url_metadata()));
+        assert_eq!(assets[2], asset_2(1, url_metadata()));
+        assert_eq!(assets[3], asset_2(19, url_metadata()));
     }
 
     #[test]
@@ -1052,11 +1092,18 @@ mod tests {
             ],
         };
         let quantities = vec![10, 1, 19];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
+        let assets = Query::compute_assets(
+            prev_outs,
+            index,
+            &txn,
+            quantities,
+            Network::Bitcoin,
+            &url_metadata(),
+        );
         assert_eq!(assets.len(), 4);
-        assert_eq!(assets[0], asset_1(10));
-        assert_eq!(assets[1], asset_1(1));
-        assert_eq!(assets[2], asset_1(19));
+        assert_eq!(assets[0], asset_1(10, url_metadata()));
+        assert_eq!(assets[1], asset_1(1, url_metadata()));
+        assert_eq!(assets[2], asset_1(19, url_metadata()));
         assert_eq!(assets[3], None);
     }
 
@@ -1074,13 +1121,13 @@ mod tests {
                     value: 1000,
                     script_pubkey: p2pkh,
                 },
-                asset_2(3),
+                asset_2(3, empty_metadata()),
             ),
-            (TxOut::default(), asset_2(2)),
+            (TxOut::default(), asset_2(2, empty_metadata())),
             (TxOut::default(), None),
-            (TxOut::default(), asset_2(5)),
-            (TxOut::default(), asset_2(3)),
-            (TxOut::default(), asset_3(9)),
+            (TxOut::default(), asset_2(5, empty_metadata())),
+            (TxOut::default(), asset_2(3, empty_metadata())),
+            (TxOut::default(), asset_3(9, empty_metadata())),
         ];
         let index = 2;
         let valid_marker = TxOut {
@@ -1116,23 +1163,30 @@ mod tests {
             ],
         };
         let quantities = vec![0, 10, 6, 0, 7, 3];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
+        let assets = Query::compute_assets(
+            prev_outs,
+            index,
+            &txn,
+            quantities,
+            Network::Bitcoin,
+            &empty_metadata(),
+        );
         assert_eq!(assets.len(), 7);
         assert_eq!(assets[0], None);
-        assert_eq!(assets[1], asset_1(10));
+        assert_eq!(assets[1], asset_1(10, empty_metadata()));
         assert_eq!(assets[2], None);
-        assert_eq!(assets[3], asset_2(6));
+        assert_eq!(assets[3], asset_2(6, empty_metadata()));
         assert_eq!(assets[4], None);
-        assert_eq!(assets[5], asset_2(7));
-        assert_eq!(assets[6], asset_3(3));
+        assert_eq!(assets[5], asset_2(7, empty_metadata()));
+        assert_eq!(assets[6], asset_3(3, empty_metadata()));
     }
 
     #[test]
     fn test_compute_assets_contains_uncolored() {
         let prev_outs = vec![
-            (TxOut::default(), asset_1(2)),
-            (TxOut::default(), asset_1(5)),
-            (TxOut::default(), asset_2(9)),
+            (TxOut::default(), asset_1(2, empty_metadata())),
+            (TxOut::default(), asset_1(5, empty_metadata())),
+            (TxOut::default(), asset_2(9, empty_metadata())),
         ];
         let index = 0;
         let valid_marker = TxOut {
@@ -1160,12 +1214,19 @@ mod tests {
             ],
         };
         let quantities = vec![7, 3, 3];
-        let assets = Query::compute_assets(prev_outs, index, &txn, quantities, Network::Bitcoin);
+        let assets = Query::compute_assets(
+            prev_outs,
+            index,
+            &txn,
+            quantities,
+            Network::Bitcoin,
+            &url_metadata(),
+        );
         assert_eq!(assets.len(), 6);
         assert_eq!(assets[0], None);
-        assert_eq!(assets[1], asset_1(7));
-        assert_eq!(assets[2], asset_2(3));
-        assert_eq!(assets[3], asset_2(3));
+        assert_eq!(assets[1], asset_1(7, url_metadata()));
+        assert_eq!(assets[2], asset_2(3, url_metadata()));
+        assert_eq!(assets[3], asset_2(3, url_metadata()));
         assert_eq!(assets[4], None);
         assert_eq!(assets[5], None);
     }
