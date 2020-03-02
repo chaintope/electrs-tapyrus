@@ -10,6 +10,8 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate assert_json_diff;
+// I really don't know why it fails without this line
+extern crate configure_me;
 
 pub mod app;
 pub mod bulk;

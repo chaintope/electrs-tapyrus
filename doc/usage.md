@@ -27,7 +27,7 @@ Allow Bitcoin daemon to sync before starting Electrum server:
 $ bitcoind -server=1 -txindex=0 -prune=0
 ```
 
-If you are using `-rpcuser=USER` and `-rpcpassword=PASSWORD` for authentication, please use `cookie="USER:PASSWORD"` option in one of the config files.
+If you are using `-rpcuser=USER` and `-rpcpassword=PASSWORD` for authentication, please use `cookie="USER:PASSWORD"` option in one of the [config files](https://github.com/romanz/electrs/blob/master/doc/usage.md#configuration-files-and-environment-variables).
 Otherwise, [`~/.bitcoin/.cookie`](https://github.com/bitcoin/bitcoin/blob/0212187fc624ea4a02fc99bc57ebd413499a9ee1/contrib/debian/examples/bitcoin.conf#L70-L72) will be read, allowing this server to use bitcoind JSONRPC interface.
 
 ## Usage
@@ -217,7 +217,7 @@ $ echo "
 scrape_configs:
   - job_name: electrs
     static_configs:
-    - targets: ['localhost:4224']
+      - targets: ['localhost:4224']
 " | sudo tee -a /etc/prometheus/prometheus.yml
 $ sudo systemctl restart prometheus
 $ firefox 'http://localhost:9090/graph?g0.range_input=1h&g0.expr=index_height&g0.tab=0'

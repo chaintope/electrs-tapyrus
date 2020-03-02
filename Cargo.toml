@@ -15,6 +15,9 @@ build = "build.rs"
 name = "electrs_tapyrus"
 path = "src/lib.rs"
 
+[package.metadata.configure_me]
+spec = "config_spec.toml"
+
 [profile.release]
 lto = true
 
@@ -27,7 +30,7 @@ base64 = "0.10"
 bincode = "1.0"
 tapyrus = { git = "https://github.com/chaintope/rust-tapyrus/", tag = "v0.1.0", features = ["use-serde"] }
 bitcoin_hashes = "0.7"
-configure_me = "0.3.2"
+configure_me = "0.3.3"
 crossbeam-channel = "0.3"
 dirs = "1.0"
 error-chain = "0.12"
@@ -35,12 +38,12 @@ glob = "0.3"
 hex = "0.3"
 libc = "0.2"
 log = "0.4"
-lru = "0.1"
+lru = "0.4.3"
 num_cpus = "1.0"
 openassets-tapyrus = { git = "https://github.com/chaintope/openassets-tapyrus/", tag = "v0.1.0" }
 page_size = "0.4"
 prometheus = "0.5"
-rocksdb = { git = "https://github.com/rust-rocksdb/rust-rocksdb", rev = "aa1aa97163b2db54e90e0056b150d5ff11af0068" }
+rocksdb = "0.13"
 rust-crypto = "0.2"
 serde = { version = "1.0", features = ["derive"]}
 serde_derive = "1.0"
@@ -52,4 +55,4 @@ time = "0.1"
 tiny_http = "0.6"
 
 [build-dependencies]
-configure_me_codegen = "0.3.4"
+configure_me_codegen = "0.3.12"

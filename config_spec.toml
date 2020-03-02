@@ -1,5 +1,7 @@
 [general]
 env_prefix = "ELECTRS"
+conf_file_param = "conf"
+conf_dir_param = "conf_dir"
 doc = """
 An efficient re-implementation of Electrum Server, inspired by ElectrumX, Electrum Personal Server and bitcoincore-indexd.
 
@@ -30,16 +32,22 @@ default = "crate::config::default_daemon_dir()"
 [[param]]
 name = "cookie"
 type = "String"
-doc = "JSONRPC authentication cookie ('USER:PASSWORD', default: read from ~/.bitcoin/.cookie)"
+doc = "JSONRPC authentication cookie ('USER:PASSWORD', default: read from cookie file)"
 # Force the user to use config file in order to avoid password leaks
 argument = false
 env_var = false
 
 [[param]]
+name = "cookie_file"
+type = "std::path::PathBuf"
+doc = "JSONRPC authentication cookie file (default: ~/.bitcoin/.cookie)"
+# This is safe to configure on command line.
+
+[[param]]
 name = "network"
 type = "crate::config::BitcoinNetwork"
 convert_into = "::tapyrus::network::constants::Network"
-doc = "Select Bitcoin network type ('mainnet', 'testnet' or 'regtest')"
+doc = "Select Bitcoin network type ('bitcoin', 'testnet' or 'regtest')"
 default = "Default::default()"
 
 [[param]]
@@ -74,16 +82,16 @@ doc = "Number of threads used for bulk indexing (default: use the # of CPUs)"
 default = "0"
 
 [[param]]
-name = "tx_cache_size"
-type = "usize"
-doc = "Number of transactions to keep in for query LRU cache"
-default = "10000"
+name = "tx_cache_size_mb"
+type = "f32"
+doc = "Total size of transactions to cache (MB)"
+default = "10.0"
 
 [[param]]
-name = "blocktxids_cache_size"
-type = "usize"
-doc = "Number of blocks to cache transactions IDs in LRU cache"
-default = "100"
+name = "blocktxids_cache_size_mb"
+type = "f32"
+doc = "Total size of block transactions IDs to cache (in MB)"
+default = "10.0"
 
 [[param]]
 name = "txid_limit"
