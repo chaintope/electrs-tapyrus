@@ -67,13 +67,17 @@ fn run_server(config: &Config) -> Result<()> {
         asset_cache,
         config.txid_limit,
     );
+    let relayfee = query.get_relayfee()?;
+    debug!("relayfee: {} BTC", relayfee);
 
     let mut server = None; // Electrum RPC server
     loop {
         app.update(&signal)?;
         query.update_mempool()?;
         server
-            .get_or_insert_with(|| RPC::start(config.electrum_rpc_addr, query.clone(), &metrics))
+            .get_or_insert_with(|| {
+                RPC::start(config.electrum_rpc_addr, query.clone(), &metrics, relayfee)
+            })
             .notify(); // update subscribed clients
         if let Err(err) = signal.wait(Duration::from_secs(5)) {
             info!("stopping server: {}", err);
