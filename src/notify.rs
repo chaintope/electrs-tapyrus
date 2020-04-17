@@ -4,8 +4,8 @@ use tapyrus::network::constants::Network;
 use tapyrus::network::message::NetworkMessage;
 use tapyrus::network::message_blockdata::InvType;
 use tapyrus::network::socket::Socket;
-use tapyrus::util::hash::Sha256dHash;
 use tapyrus::util::Error;
+use tapyrus::hash_types::{Txid, BlockHash};
 
 use std::sync::mpsc::Sender;
 use std::thread;
@@ -14,7 +14,7 @@ use std::time::Duration;
 use crate::util;
 
 fn connect() -> Result<Socket, Error> {
-    let mut sock = Socket::new(Network::Bitcoin);
+    let mut sock = Socket::new(Network::Prod);
     sock.connect("127.0.0.1", 8333)?;
     Ok(sock)
 }

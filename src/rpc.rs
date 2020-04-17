@@ -1,5 +1,4 @@
 use bitcoin_hashes::hex::{FromHex, ToHex};
-use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use error_chain::ChainedError;
 use hex;
 use serde_json::{from_str, Value};
@@ -11,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::consensus::encode::{deserialize, serialize};
+use tapyrus::hash_types::{ScriptHash, Txid};
 
 use crate::errors::*;
 use crate::metrics::{Gauge, HistogramOpts, HistogramVec, MetricOpts, Metrics};
@@ -20,12 +20,18 @@ use crate::util::{spawn_thread, Channel, HeaderEntry, SyncChannel};
 const ELECTRS_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROTOCOL_VERSION: &str = "1.4";
 
-// TODO: Sha256dHash should be a generic hash-container (since script hash is single SHA256)
-fn hash_from_value(val: Option<&Value>) -> Result<Sha256dHash> {
-    let script_hash = val.chain_err(|| "missing hash")?;
-    let script_hash = script_hash.as_str().chain_err(|| "non-string hash")?;
-    let script_hash = Sha256dHash::from_hex(script_hash).chain_err(|| "non-hex hash")?;
-    Ok(script_hash)
+fn script_hash_from_value(val: Option<&Value>) -> Result<ScriptHash> {
+    let hash = val.chain_err(|| "missing hash")?;
+    let hash = hash.as_str().chain_err(|| "non-string hash")?;
+    let hash = ScriptHash::from_hex(hash).chain_err(|| "non-hex hash")?;
+    Ok(hash)
+}
+
+fn tx_hash_from_value(val: Option<&Value>) -> Result<Txid> {
+    let hash = val.chain_err(|| "missing hash")?;
+    let hash = hash.as_str().chain_err(|| "non-string hash")?;
+    let hash = Txid::from_hex(hash).chain_err(|| "non-hex hash")?;
+    Ok(hash)
 }
 
 fn usize_from_value(val: Option<&Value>, name: &str) -> Result<usize> {
@@ -87,7 +93,7 @@ fn uncolored_unspent_from_status(status: &Status) -> Value {
 struct Connection {
     query: Arc<Query>,
     last_header_entry: Option<HeaderEntry>,
-    status_hashes: HashMap<Sha256dHash, Value>, // ScriptHash -> StatusHash
+    status_hashes: HashMap<ScriptHash, Value>, // ScriptHash -> StatusHash
     stream: TcpStream,
     addr: SocketAddr,
     chan: SyncChannel<Message>,
@@ -217,7 +223,7 @@ impl Connection {
     }
 
     fn blockchain_scripthash_subscribe(&mut self, params: &[Value]) -> Result<Value> {
-        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         let status = self.query.status(&script_hash[..])?;
         let result = status.hash().map_or(Value::Null, |h| json!(hex::encode(h)));
         self.status_hashes.insert(script_hash, result.clone());
@@ -225,7 +231,7 @@ impl Connection {
     }
 
     fn blockchain_scripthash_get_balance(&self, params: &[Value]) -> Result<Value> {
-        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         let status = self.query.status(&script_hash[..])?;
         Ok(
             json!({ "confirmed": status.confirmed_balance(), "unconfirmed": status.mempool_balance() }),
@@ -233,7 +239,7 @@ impl Connection {
     }
 
     fn blockchain_scripthash_get_history(&self, params: &[Value]) -> Result<Value> {
-        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         let status = self.query.status(&script_hash[..])?;
         Ok(json!(Value::Array(
             status
@@ -245,19 +251,19 @@ impl Connection {
     }
 
     fn blockchain_scripthash_listunspent(&self, params: &[Value]) -> Result<Value> {
-        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(unspent_from_status(&self.query.status(&script_hash[..])?))
     }
 
     fn blockchain_scripthash_listcoloredunspent(&self, params: &[Value]) -> Result<Value> {
-        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(colored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
         ))
     }
 
     fn blockchain_scripthash_listuncoloredunspent(&self, params: &[Value]) -> Result<Value> {
-        let script_hash = hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(uncolored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
         ))
@@ -277,7 +283,7 @@ impl Connection {
     }
 
     fn blockchain_transaction_get(&self, params: &[Value]) -> Result<Value> {
-        let tx_hash = hash_from_value(params.get(0)).chain_err(|| "bad tx_hash")?;
+        let tx_hash = tx_hash_from_value(params.get(0)).chain_err(|| "bad tx_hash")?;
         let verbose = match params.get(1) {
             Some(value) => value.as_bool().chain_err(|| "non-bool verbose value")?,
             None => false,
@@ -286,7 +292,7 @@ impl Connection {
     }
 
     fn blockchain_transaction_get_merkle(&self, params: &[Value]) -> Result<Value> {
-        let tx_hash = hash_from_value(params.get(0)).chain_err(|| "bad tx_hash")?;
+        let tx_hash = tx_hash_from_value(params.get(0)).chain_err(|| "bad tx_hash")?;
         let height = usize_from_value(params.get(1), "height")?;
         let (merkle, pos) = self
             .query

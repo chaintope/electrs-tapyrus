@@ -9,13 +9,14 @@ import matplotlib.pyplot as plt
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--testnet', action='store_true')
+    parser.add_argument('--dev', action='store_true')
+    parser.add_argument('--networkid', action='store_true')
     args = parser.parse_args()
 
-    if args.testnet:
-        d = Daemon(port=18332, cookie_dir='~/.bitcoin/testnet3')
+    if args.dev:
+        d = Daemon(port=18332, cookie_dir='~/.tapyrus/dev')
     else:
-        d = Daemon(port=8332, cookie_dir='~/.bitcoin')
+        d = Daemon(port=8332, cookie_dir='~/.tapyrus')
 
     txids, = d.request('getrawmempool', [[False]])
     txids = list(map(lambda a: [a], txids))
