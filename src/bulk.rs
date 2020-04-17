@@ -1,4 +1,3 @@
-use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use libc;
 use std::collections::HashSet;
 use std::fs;
@@ -12,6 +11,7 @@ use std::thread;
 use tapyrus::blockdata::block::Block;
 use tapyrus::consensus::encode::{deserialize, Decodable};
 use tapyrus::util::hash::BitcoinHash;
+use tapyrus::hash_types::BlockHash;
 
 use crate::daemon::Daemon;
 use crate::errors::*;
@@ -24,7 +24,7 @@ use crate::util::{spawn_thread, HeaderList, SyncChannel};
 struct Parser {
     magic: u32,
     current_headers: HeaderList,
-    indexed_blockhashes: Mutex<HashSet<Sha256dHash>>,
+    indexed_blockhashes: Mutex<HashSet<BlockHash>>,
     // metrics
     duration: HistogramVec,
     block_count: CounterVec,
@@ -35,7 +35,7 @@ impl Parser {
     fn new(
         daemon: &Daemon,
         metrics: &Metrics,
-        indexed_blockhashes: HashSet<Sha256dHash>,
+        indexed_blockhashes: HashSet<BlockHash>,
     ) -> Result<Arc<Parser>> {
         Ok(Arc::new(Parser {
             magic: daemon.magic(),
@@ -264,20 +264,4 @@ pub fn index_blk_files(
     })
     .join()
     .expect("writer panicked")
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use bitcoin_hashes::Hash;
-    use hex::decode as hex_decode;
-
-    pub fn fixture(filename: &str) -> String {
-        let path = Path::new("src")
-            .join("tests")
-            .join("fixtures")
-            .join(filename);
-        fs::read_to_string(path).unwrap()
-    }
 }

@@ -4,8 +4,8 @@ use tapyrus::network::constants::Network;
 use tapyrus::network::message::NetworkMessage;
 use tapyrus::network::message_blockdata::InvType;
 use tapyrus::network::socket::Socket;
-use tapyrus::util::hash::Sha256dHash;
 use tapyrus::util::Error;
+use tapyrus::hash_types::{Txid, BlockHash};
 
 use std::sync::mpsc::Sender;
 use std::thread;

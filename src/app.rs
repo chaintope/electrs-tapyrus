@@ -1,15 +1,15 @@
-use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use std::sync::{Arc, Mutex};
 
 use crate::{config::Config, daemon, errors::*, index, signal::Waiter, store};
 use tapyrus::network::constants::Network;
+use tapyrus::hash_types::BlockHash;
 
 pub struct App {
     store: store::DBStore,
     index: index::Index,
     daemon: daemon::Daemon,
     banner: String,
-    tip: Mutex<Sha256dHash>,
+    tip: Mutex<BlockHash>,
     network_type: Network,
 }
 
@@ -25,7 +25,7 @@ impl App {
             index,
             daemon: daemon.reconnect()?,
             banner: config.server_banner.clone(),
-            tip: Mutex::new(Sha256dHash::default()),
+            tip: Mutex::new(BlockHash::default()),
             network_type: config.network_type,
         }))
     }
