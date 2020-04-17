@@ -1,14 +1,13 @@
 use crate::errors::*;
 use crate::metrics::{CounterVec, MetricOpts, Metrics};
 
-use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use lru::LruCache;
 use prometheus::IntGauge;
 use std::hash::Hash;
 use std::sync::Mutex;
 use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::consensus::encode::deserialize;
-use tapyrus::util::hash::BitcoinHash;
+use tapyrus::hash_types::{BlockHash, Txid};
 
 struct SizedLruCache<K, V> {
     map: LruCache<K, (V, usize)>,
@@ -63,7 +62,7 @@ impl<K: Hash + Eq, V> SizedLruCache<K, V> {
 }
 
 pub struct BlockTxIDsCache {
-    map: Mutex<SizedLruCache<Sha256dHash /* blockhash */, Vec<Sha256dHash /* txid */>>>,
+    map: Mutex<SizedLruCache<BlockHash, Vec<Txid>>>,
 }
 
 impl BlockTxIDsCache {
@@ -84,13 +83,9 @@ impl BlockTxIDsCache {
         }
     }
 
-    pub fn get_or_else<F>(
-        &self,
-        blockhash: &Sha256dHash,
-        load_txids_func: F,
-    ) -> Result<Vec<Sha256dHash>>
+    pub fn get_or_else<F>(&self, blockhash: &BlockHash, load_txids_func: F) -> Result<Vec<Txid>>
     where
-        F: FnOnce() -> Result<Vec<Sha256dHash>>,
+        F: FnOnce() -> Result<Vec<Txid>>,
     {
         if let Some(txids) = self.map.lock().unwrap().get(blockhash) {
             return Ok(txids.clone());
@@ -108,7 +103,7 @@ impl BlockTxIDsCache {
 
 pub struct TransactionCache {
     // Store serialized transaction (should use less RAM).
-    map: Mutex<SizedLruCache<Sha256dHash, Vec<u8>>>,
+    map: Mutex<SizedLruCache<Txid, Vec<u8>>>,
 }
 
 impl TransactionCache {
@@ -129,7 +124,7 @@ impl TransactionCache {
         }
     }
 
-    pub fn get_or_else<F>(&self, txid: &Sha256dHash, load_txn_func: F) -> Result<Transaction>
+    pub fn get_or_else<F>(&self, txid: &Txid, load_txn_func: F) -> Result<Transaction>
     where
         F: FnOnce() -> Result<Vec<u8>>,
     {
@@ -202,17 +197,22 @@ mod tests {
         assert_eq!(usage.get(), 100);
     }
 
-    fn gen_hash(seed: u8) -> Sha256dHash {
+    fn gen_block_hash(seed: u8) -> BlockHash {
         let bytes: Vec<u8> = (seed..seed + 32).collect();
-        Sha256dHash::hash(&bytes[..])
+        BlockHash::hash(&bytes[..])
+    }
+
+    fn gen_tx_hash(seed: u8) -> Txid {
+        let bytes: Vec<u8> = (seed..seed + 32).collect();
+        Txid::hash(&bytes[..])
     }
 
     #[test]
     fn test_blocktxids_cache_hit_and_miss() {
-        let block1 = gen_hash(1);
-        let block2 = gen_hash(2);
-        let block3 = gen_hash(3);
-        let txids = vec![gen_hash(4), gen_hash(5)];
+        let block1 = gen_block_hash(1);
+        let block2 = gen_block_hash(2);
+        let block3 = gen_block_hash(3);
+        let txids = vec![gen_tx_hash(4), gen_tx_hash(5)];
 
         let misses: Mutex<usize> = Mutex::new(0);
         let miss_func = || {
@@ -251,14 +251,13 @@ mod tests {
     #[test]
     fn test_txn_cache() {
         use hex;
-        use tapyrus::util::hash::BitcoinHash;
 
         let dummy_metrics = Metrics::new("127.0.0.1:60000".parse().unwrap());
         let cache = TransactionCache::new(1024, &dummy_metrics);
         let tx_bytes = hex::decode("0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000").unwrap();
 
         let tx: Transaction = deserialize(&tx_bytes).unwrap();
-        let txid = tx.bitcoin_hash();
+        let txid = tx.txid();
 
         let mut misses = 0;
         assert_eq!(

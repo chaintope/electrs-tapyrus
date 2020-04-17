@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::blockdata::transaction::TxOut;
 use tapyrus::consensus::encode::deserialize;
-use tapyrus::consensus::encode::serialize;
+use tapyrus::hash_types::{BlockHash, Txid};
 use tapyrus::network::constants::Network;
 
 use crate::app::App;
@@ -27,7 +27,7 @@ use crate::store::{ReadStore, Row};
 use crate::util::{FullHash, HashPrefix, HeaderEntry};
 
 pub struct FundingOutput {
-    pub txn_id: Sha256dHash,
+    pub txn_id: Txid,
     pub height: u32,
     pub output_index: usize,
     pub value: u64,
@@ -36,7 +36,7 @@ pub struct FundingOutput {
 
 impl FundingOutput {
     pub fn build(
-        txn_id: Sha256dHash,
+        txn_id: Txid,
         height: u32,
         output_index: usize,
         value: u64,
@@ -109,10 +109,10 @@ impl Serialize for Asset {
     }
 }
 
-type OutPoint = (Sha256dHash, usize); // (txid, output_index)
+type OutPoint = (Txid, usize); // (txid, output_index)
 
 struct SpendingInput {
-    txn_id: Sha256dHash,
+    txn_id: Txid,
     height: u32,
     funding_output: OutPoint,
     value: u64,
@@ -146,15 +146,15 @@ impl Status {
         calc_balance(&self.mempool)
     }
 
-    pub fn history(&self) -> Vec<(i32, Sha256dHash)> {
-        let mut txns_map = HashMap::<Sha256dHash, i32>::new();
+    pub fn history(&self) -> Vec<(i32, Txid)> {
+        let mut txns_map = HashMap::<Txid, i32>::new();
         for f in self.funding() {
             txns_map.insert(f.txn_id, f.height as i32);
         }
         for s in self.spending() {
             txns_map.insert(s.txn_id, s.height as i32);
         }
-        let mut txns: Vec<(i32, Sha256dHash)> =
+        let mut txns: Vec<(i32, Txid)> =
             txns_map.into_iter().map(|item| (item.1, item.0)).collect();
         txns.sort_unstable();
         txns
@@ -238,7 +238,7 @@ fn create_merkle_branch_and_root(
 }
 
 // TODO: the functions below can be part of ReadStore.
-fn txrow_by_txid(store: &dyn ReadStore, txid: &Sha256dHash) -> Option<TxRow> {
+fn txrow_by_txid(store: &dyn ReadStore, txid: &Txid) -> Option<TxRow> {
     let key = TxRow::filter_full(&txid);
     let value = store.get(&key)?;
     Some(TxRow::from_row(&Row { key, value }))
@@ -262,7 +262,7 @@ fn txids_by_script_hash(store: &dyn ReadStore, script_hash: &[u8]) -> Vec<HashPr
 
 fn txids_by_funding_output(
     store: &dyn ReadStore,
-    txn_id: &Sha256dHash,
+    txn_id: &Txid,
     output_index: usize,
 ) -> Vec<HashPrefix> {
     store
@@ -273,7 +273,7 @@ fn txids_by_funding_output(
 }
 
 pub struct AssetCache {
-    map: Mutex<LruCache<Sha256dHash, Vec<Option<Asset>>>>,
+    map: Mutex<LruCache<Txid, Vec<Option<Asset>>>>,
 }
 
 impl AssetCache {
@@ -283,7 +283,7 @@ impl AssetCache {
         }
     }
 
-    fn get_or_else<F>(&self, txid: &Sha256dHash, load_assets_func: F) -> Result<Vec<Option<Asset>>>
+    fn get_or_else<F>(&self, txid: &Txid, load_assets_func: F) -> Result<Vec<Option<Asset>>>
     where
         F: FnOnce() -> Result<Vec<Option<Asset>>>,
     {
@@ -337,7 +337,7 @@ impl Query {
         let mut txns = vec![];
         for txid_prefix in prefixes {
             for tx_row in txrows_by_prefix(store, txid_prefix) {
-                let txid: Sha256dHash = deserialize(&tx_row.key.txid).unwrap();
+                let txid: Txid = deserialize(&tx_row.key.txid).unwrap();
                 let txn = self.load_txn(&txid, Some(tx_row.height))?;
                 txns.push(TxnHeight {
                     txn,
@@ -513,7 +513,7 @@ impl Query {
         result
     }
 
-    fn get_output(&self, txid: &Sha256dHash, index: u32) -> (TxOut, Option<Asset>) {
+    fn get_output(&self, txid: &Txid, index: u32) -> (TxOut, Option<Asset>) {
         let txn = self.load_txn(txid, None).expect("txn not found");
         let colored_outputs = self.load_assets(&txn).expect("asset not found");
         (
@@ -593,9 +593,9 @@ impl Query {
 
     fn lookup_confirmed_blockhash(
         &self,
-        tx_hash: &Sha256dHash,
+        tx_hash: &Txid,
         block_height: Option<u32>,
-    ) -> Result<Option<Sha256dHash>> {
+    ) -> Result<Option<BlockHash>> {
         let blockhash = if self.tracker.read().unwrap().get_txn(&tx_hash).is_some() {
             None // found in mempool (as unconfirmed transaction)
         } else {
@@ -619,7 +619,7 @@ impl Query {
     }
 
     // Internal API for transaction retrieval
-    fn load_txn(&self, txid: &Sha256dHash, block_height: Option<u32>) -> Result<Transaction> {
+    fn load_txn(&self, txid: &Txid, block_height: Option<u32>) -> Result<Transaction> {
         let _timer = self.duration.with_label_values(&["load_txn"]).start_timer();
         self.tx_cache.get_or_else(&txid, || {
             let blockhash = self.lookup_confirmed_blockhash(txid, block_height)?;
@@ -640,7 +640,7 @@ impl Query {
     }
 
     // Public API for transaction retrieval (for Electrum RPC)
-    pub fn get_transaction(&self, tx_hash: &Sha256dHash, verbose: bool) -> Result<Value> {
+    pub fn get_transaction(&self, tx_hash: &Txid, verbose: bool) -> Result<Value> {
         let _timer = self
             .duration
             .with_label_values(&["get_transaction"])
@@ -668,11 +668,7 @@ impl Query {
         Ok(last_header.chain_err(|| "no headers indexed")?.clone())
     }
 
-    pub fn get_merkle_proof(
-        &self,
-        tx_hash: &Sha256dHash,
-        height: usize,
-    ) -> Result<(Vec<Sha256dHash>, usize)> {
+    pub fn get_merkle_proof(&self, tx_hash: &Txid, height: usize) -> Result<(Vec<Txid>, usize)> {
         let header_entry = self
             .app
             .index()
@@ -683,15 +679,16 @@ impl Query {
             .iter()
             .position(|txid| txid == tx_hash)
             .chain_err(|| format!("missing txid {}", tx_hash))?;
-        let (branch, _root) = create_merkle_branch_and_root(txids, pos);
-        Ok((branch, pos))
+        let hashes = txids.iter().map(|txid| txid.as_hash()).collect();
+        let (branch, _root) = create_merkle_branch_and_root(hashes, pos);
+        Ok((branch.iter().map(|&h| Txid::from_hash(h)).collect(), pos))
     }
 
     pub fn get_header_merkle_proof(
         &self,
         height: usize,
         cp_height: usize,
-    ) -> Result<(Vec<Sha256dHash>, Sha256dHash)> {
+    ) -> Result<(Vec<BlockHash>, BlockHash)> {
         if cp_height < height {
             bail!("cp_height #{} < height #{}", cp_height, height);
         }
@@ -710,9 +707,14 @@ impl Query {
             .get_headers(&heights)
             .into_iter()
             .map(|h| *h.hash())
+            .map(|h| h.as_hash())
             .collect();
         assert_eq!(header_hashes.len(), heights.len());
-        Ok(create_merkle_branch_and_root(header_hashes, height))
+        let (branch, root) = create_merkle_branch_and_root(header_hashes, height);
+        Ok((
+            branch.iter().map(|&h| BlockHash::from_hash(h)).collect(),
+            BlockHash::from_hash(root),
+        ))
     }
 
     pub fn get_id_from_pos(
@@ -720,7 +722,7 @@ impl Query {
         height: usize,
         tx_pos: usize,
         want_merkle: bool,
-    ) -> Result<(Sha256dHash, Vec<Sha256dHash>)> {
+    ) -> Result<(Txid, Vec<Txid>)> {
         let header_entry = self
             .app
             .index()
@@ -731,16 +733,17 @@ impl Query {
         let txid = *txids
             .get(tx_pos)
             .chain_err(|| format!("No tx in position #{} in block #{}", tx_pos, height))?;
+        let hashes = txids.iter().map(|txid| txid.as_hash()).collect();
 
         let branch = if want_merkle {
-            create_merkle_branch_and_root(txids, tx_pos).0
+            create_merkle_branch_and_root(hashes, tx_pos).0
         } else {
             vec![]
         };
-        Ok((txid, branch))
+        Ok((txid, branch.iter().map(|&h| Txid::from_hash(h)).collect()))
     }
 
-    pub fn broadcast(&self, txn: &Transaction) -> Result<Sha256dHash> {
+    pub fn broadcast(&self, txn: &Transaction) -> Result<Txid> {
         self.app.daemon().broadcast(txn)
     }
 
@@ -783,7 +786,6 @@ impl Query {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin_hashes::sha256d::Hash as Sha256dHash;
     use hex;
     use openassets_tapyrus::openassets::marker_output::{Metadata, Payload};
     use std::str::FromStr;
@@ -791,20 +793,19 @@ mod tests {
     use tapyrus::blockdata::script::Script;
     use tapyrus::blockdata::transaction::{OutPoint, Transaction, TxIn, TxOut};
     use tapyrus::consensus::deserialize;
+    use tapyrus::hash_types::Txid;
     use tapyrus::network::constants::Network;
 
     use crate::errors::*;
     use crate::query::{Asset, AssetCache, AssetId, FundingOutput, Query, SpendingInput, Status};
 
     fn status() -> Status {
-        let txid1 = Sha256dHash::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
-        let txid2 = Sha256dHash::from_str(
-            "1111111111111111111111111111111111111111111111111111111111111111",
-        )
-        .unwrap();
+        let txid1 =
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
+        let txid2 =
+            Txid::from_str("1111111111111111111111111111111111111111111111111111111111111111")
+                .unwrap();
 
         let confirmed_fundings: Vec<FundingOutput> = vec![
             FundingOutput::build(txid1, 0, 1, 2, None),
@@ -826,14 +827,12 @@ mod tests {
 
     #[test]
     fn test_colored_unspent() {
-        let txid1 = Sha256dHash::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
-        let txid2 = Sha256dHash::from_str(
-            "1111111111111111111111111111111111111111111111111111111111111111",
-        )
-        .unwrap();
+        let txid1 =
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
+        let txid2 =
+            Txid::from_str("1111111111111111111111111111111111111111111111111111111111111111")
+                .unwrap();
 
         let status = status();
         let unspents = status.colored_unspent();
@@ -858,14 +857,12 @@ mod tests {
 
     #[test]
     fn test_uncolored_unspent() {
-        let txid1 = Sha256dHash::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
-        let txid2 = Sha256dHash::from_str(
-            "1111111111111111111111111111111111111111111111111111111111111111",
-        )
-        .unwrap();
+        let txid1 =
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
+        let txid2 =
+            Txid::from_str("1111111111111111111111111111111111111111111111111111111111111111")
+                .unwrap();
 
         let status = status();
         let unspents = status.uncolored_unspent();
@@ -882,10 +879,9 @@ mod tests {
 
     #[test]
     fn test_to_json() {
-        let txid = Sha256dHash::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
+        let txid =
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
         let output = FundingOutput::build(txid, 0, 1, 2, None);
         let value = output.to_json();
         assert_json_eq!(
@@ -901,10 +897,9 @@ mod tests {
 
     #[test]
     fn test_asset_to_json() {
-        let txid = Sha256dHash::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
+        let txid =
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
         let output = FundingOutput::build(txid, 0, 1, 2, asset_1(3, url_metadata()));
         let value = output.to_json();
         assert_json_eq!(
@@ -929,12 +924,11 @@ mod tests {
     #[test]
     fn test_asset_cache() {
         let asset_cache = AssetCache::new(10);
-        let txid = Sha256dHash::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
+        let txid =
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
         let asset = Asset {
-            asset_id: AssetId::new(&Script::new(), Network::Bitcoin),
+            asset_id: AssetId::new(&Script::new(), Network::Prod),
             asset_quantity: 1,
             metadata: empty_metadata(),
         };
@@ -968,7 +962,7 @@ mod tests {
         let hex = "76a914010966776006953d5567439e5e39f86a0d273bee88ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
-            asset_id: AssetId::new(&script, Network::Bitcoin),
+            asset_id: AssetId::new(&script, Network::Prod),
             asset_quantity: quantity,
             metadata: metadata,
         })
@@ -978,7 +972,7 @@ mod tests {
         let hex = "76a914b60fd86c7464b08d83d98ebeb59655d71be3b22688ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
-            asset_id: AssetId::new(&script, Network::Bitcoin),
+            asset_id: AssetId::new(&script, Network::Prod),
             asset_quantity: quantity,
             metadata: metadata,
         })
@@ -988,7 +982,7 @@ mod tests {
         let hex = "76a9149f00983b75904599a5e9c2e53c8b1002fc42e9ac88ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
         Some(Asset {
-            asset_id: AssetId::new(&script, Network::Bitcoin),
+            asset_id: AssetId::new(&script, Network::Prod),
             asset_quantity: quantity,
             metadata: metadata,
         })
@@ -996,10 +990,8 @@ mod tests {
 
     fn default_input(index: u32) -> TxIn {
         let out_point = OutPoint::new(
-            Sha256dHash::from_str(
-                "0000000000000000000000000000000000000000000000000000000000000000",
-            )
-            .unwrap(),
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
             index,
         );
         TxIn {
@@ -1061,7 +1053,7 @@ mod tests {
             index,
             &txn,
             quantities,
-            Network::Bitcoin,
+            Network::Prod,
             &url_metadata(),
         );
         assert_eq!(assets.len(), 4);
@@ -1116,7 +1108,7 @@ mod tests {
             index,
             &txn,
             quantities,
-            Network::Bitcoin,
+            Network::Prod,
             &url_metadata(),
         );
         assert_eq!(assets.len(), 4);
@@ -1187,7 +1179,7 @@ mod tests {
             index,
             &txn,
             quantities,
-            Network::Bitcoin,
+            Network::Prod,
             &empty_metadata(),
         );
         assert_eq!(assets.len(), 7);
@@ -1238,7 +1230,7 @@ mod tests {
             index,
             &txn,
             quantities,
-            Network::Bitcoin,
+            Network::Prod,
             &url_metadata(),
         );
         assert_eq!(assets.len(), 6);

@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use stderrlog;
-use tapyrus::network::constants::Network;
+use tapyrus::network::constants::{Network, NetworkId};
 
 use crate::daemon::CookieGetter;
 use crate::errors::*;
@@ -96,7 +96,7 @@ pub struct BitcoinNetwork(Network);
 
 impl Default for BitcoinNetwork {
     fn default() -> Self {
-        BitcoinNetwork(Network::Bitcoin)
+        BitcoinNetwork(Network::Prod)
     }
 }
 
@@ -120,11 +120,42 @@ impl Into<Network> for BitcoinNetwork {
     }
 }
 
+#[derive(Deserialize)]
+pub struct TapyrusNetworkId(NetworkId);
+
+impl Default for TapyrusNetworkId {
+    fn default() -> Self {
+        TapyrusNetworkId(NetworkId::from(1))
+    }
+}
+
+impl FromStr for TapyrusNetworkId {
+    type Err = <NetworkId as FromStr>::Err;
+
+    fn from_str(string: &str) -> std::result::Result<Self, Self::Err> {
+        let id = u32::from_str(string)?;
+        Ok(TapyrusNetworkId(NetworkId::from(id)))
+    }
+}
+
+impl Into<NetworkId> for TapyrusNetworkId {
+    fn into(self) -> NetworkId {
+        self.0
+    }
+}
+
+impl ::configure_me::parse_arg::ParseArgFromStr for TapyrusNetworkId {
+    fn describe_type<W: fmt::Write>(mut writer: W) -> std::fmt::Result {
+        write!(writer, "tapyrus newtork id")
+    }
+}
+
 /// Parsed and post-processed configuration
 pub struct Config {
     // See below for the documentation of each field:
     pub log: stderrlog::StdErrLog,
     pub network_type: Network,
+    pub network_id: NetworkId,
     pub db_path: PathBuf,
     pub daemon_dir: PathBuf,
     pub daemon_rpc_addr: SocketAddr,
@@ -186,31 +217,23 @@ impl Config {
 
         let db_subdir = match config.network {
             // We must keep the name "mainnet" due to backwards compatibility
-            Network::Bitcoin => "mainnet",
-            Network::Testnet => "testnet",
-            Network::Regtest => "regtest",
-            Network::Paradium => "paradium",
+            Network::Prod => "prod",
+            Network::Dev => "dev",
         };
 
         config.db_dir.push(db_subdir);
 
         let default_daemon_port = match config.network {
-            Network::Bitcoin => 2377,
-            Network::Testnet => 12377,
-            Network::Regtest => 12381,
-            Network::Paradium => 2377,
+            Network::Prod => 2377,
+            Network::Dev => 12377,
         };
         let default_electrum_port = match config.network {
-            Network::Bitcoin => 50001,
-            Network::Testnet => 60001,
-            Network::Regtest => 60401,
-            Network::Paradium => 40001,
+            Network::Prod => 50001,
+            Network::Dev => 60001,
         };
         let default_monitoring_port = match config.network {
-            Network::Bitcoin => 4224,
-            Network::Testnet => 14224,
-            Network::Regtest => 24224,
-            Network::Paradium => 34224,
+            Network::Prod => 4224,
+            Network::Dev => 14224,
         };
 
         let daemon_rpc_addr: SocketAddr = config.daemon_rpc_addr.map_or(
@@ -227,10 +250,8 @@ impl Config {
         );
 
         match config.network {
-            Network::Bitcoin => (),
-            Network::Testnet => config.daemon_dir.push("testnet3"),
-            Network::Regtest => config.daemon_dir.push("regtest"),
-            Network::Paradium => config.daemon_dir.push("paradium"),
+            Network::Prod => (),
+            Network::Dev => config.daemon_dir.push("testnet3"),
         }
 
         let cookie_getter =
@@ -261,6 +282,7 @@ impl Config {
         let config = Config {
             log,
             network_type: config.network,
+            network_id: config.network_id,
             db_path: config.db_dir,
             daemon_dir: config.daemon_dir,
             daemon_rpc_addr,
