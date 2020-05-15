@@ -184,9 +184,6 @@ impl Config {
         let (mut config, _) =
             internal::Config::including_optional_config_files(configs).unwrap_or_exit();
 
-        let cookie_getter =
-            create_cookie_getter(config.cookie, config.cookie_file, &config.daemon_dir);
-
         let db_subdir = match config.network {
             // We must keep the name "mainnet" due to backwards compatibility
             Network::Bitcoin => "mainnet",
@@ -235,6 +232,9 @@ impl Config {
             Network::Regtest => config.daemon_dir.push("regtest"),
             Network::Paradium => config.daemon_dir.push("paradium"),
         }
+
+        let cookie_getter =
+            create_cookie_getter(config.cookie, config.cookie_file, &config.daemon_dir);
 
         let mut log = stderrlog::new();
         log.verbosity(
