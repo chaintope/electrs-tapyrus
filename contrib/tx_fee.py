@@ -6,9 +6,16 @@ import daemon
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('txid')
+    parser.add_argument('--dev', action='store_true')
+    parser.add_argument('--networkid')
+    parser.add_argument('--port')
     args = parser.parse_args()
 
-    d = daemon.Daemon(port=8332, cookie_dir='~/.bitcoin')
+    if args.dev:
+        d = daemon.Daemon(port=args.port, cookie_dir=f'~/.tapyrus/dev-{args.networkid}')
+    else:
+        d = daemon.Daemon(port=args.port, cookie_dir=f'~/.tapyrus/prod-{args.networkid}')
+
     txid = args.txid
 
     txn, = d.request('getrawtransaction', [[txid, True]])

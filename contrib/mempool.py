@@ -10,13 +10,14 @@ import matplotlib.pyplot as plt
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dev', action='store_true')
-    parser.add_argument('--networkid', action='store_true')
+    parser.add_argument('--networkid')
+    parser.add_argument('--port')
     args = parser.parse_args()
 
     if args.dev:
-        d = Daemon(port=18332, cookie_dir='~/.tapyrus/dev')
+        d = Daemon(port=args.port, cookie_dir=f'~/.tapyrus/dev-{args.networkid}')
     else:
-        d = Daemon(port=8332, cookie_dir='~/.tapyrus')
+        d = Daemon(port=args.port, cookie_dir=f'~/.tapyrus/prod-{args.networkid}')
 
     txids, = d.request('getrawmempool', [[False]])
     txids = list(map(lambda a: [a], txids))
