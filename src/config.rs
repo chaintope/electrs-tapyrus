@@ -177,7 +177,7 @@ fn default_daemon_dir() -> PathBuf {
         eprintln!("Error: unknown home directory");
         std::process::exit(1)
     });
-    home.push(".bitcoin");
+    home.push(".tapyrus");
     home
 }
 
