@@ -1,16 +1,18 @@
 use bitcoin_hashes::hex::{FromHex, ToHex};
+use bitcoin_hashes::sha256d;
 use error_chain::ChainedError;
 use hex;
 use serde_json::{from_str, Value};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::str::FromStr;
 use std::sync::mpsc::{Sender, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::consensus::encode::{deserialize, serialize};
-use tapyrus::hash_types::{ScriptHash, Txid};
+use tapyrus::hash_types::Txid;
 
 use crate::errors::*;
 use crate::metrics::{Gauge, HistogramOpts, HistogramVec, MetricOpts, Metrics};
@@ -20,10 +22,10 @@ use crate::util::{spawn_thread, Channel, HeaderEntry, SyncChannel};
 const ELECTRS_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROTOCOL_VERSION: &str = "1.4";
 
-fn script_hash_from_value(val: Option<&Value>) -> Result<ScriptHash> {
+fn script_hash_from_value(val: Option<&Value>) -> Result<sha256d::Hash> {
     let hash = val.chain_err(|| "missing hash")?;
     let hash = hash.as_str().chain_err(|| "non-string hash")?;
-    let hash = ScriptHash::from_hex(hash).chain_err(|| "non-hex hash")?;
+    let hash = sha256d::Hash::from_str(hash).chain_err(|| "non-hex hash")?;
     Ok(hash)
 }
 
@@ -93,7 +95,7 @@ fn uncolored_unspent_from_status(status: &Status) -> Value {
 struct Connection {
     query: Arc<Query>,
     last_header_entry: Option<HeaderEntry>,
-    status_hashes: HashMap<ScriptHash, Value>, // ScriptHash -> StatusHash
+    status_hashes: HashMap<sha256d::Hash, Value>, // Hash -> StatusHash
     stream: TcpStream,
     addr: SocketAddr,
     chan: SyncChannel<Message>,
