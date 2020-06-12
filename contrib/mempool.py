@@ -23,12 +23,12 @@ def main():
     txids = list(map(lambda a: [a], txids))
 
     entries = d.request('getmempoolentry', txids)
-    entries = [{'fee': e['fee']*1e8, 'vsize': e['vsize']} for e in entries]
+    entries = [{'fee': e['fee']*1e8, 'size': e['size']} for e in entries]
     for e in entries:
-        e['rate'] = e['fee'] / e['vsize']  # sat/vbyte
+        e['rate'] = e['fee'] / e['size']  # sat/vbyte
     entries.sort(key=lambda e: e['rate'], reverse=True)
 
-    vsize = np.array([e['vsize'] for e in entries]).cumsum()
+    vsize = np.array([e['size'] for e in entries]).cumsum()
     rate = np.array([e['rate'] for e in entries])
 
     plt.semilogy(vsize / 1e6, rate, '-')
