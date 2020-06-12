@@ -26,7 +26,7 @@ default = "\"./db\".into()"
 [[param]]
 name = "daemon_dir"
 type = "std::path::PathBuf"
-doc = "Data directory of Bitcoind (default: ~/.bitcoin/)"
+doc = "Data directory of Bitcoind (default: ~/.tapyrus/)"
 default = "crate::config::default_daemon_dir()"
 
 [[param]]
@@ -40,7 +40,7 @@ env_var = false
 [[param]]
 name = "cookie_file"
 type = "std::path::PathBuf"
-doc = "JSONRPC authentication cookie file (default: ~/.bitcoin/.cookie)"
+doc = "JSONRPC authentication cookie file (default: ~/.tapyrus/.cookie)"
 # This is safe to configure on command line.
 
 [[param]]
