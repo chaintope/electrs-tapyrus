@@ -5,8 +5,7 @@
 ### Build dependencies
 
 Install [recent Rust](https://rustup.rs/) (1.34+, `apt install cargo` is preferred for Debian 10),
-[latest Bitcoin Core](https://bitcoincore.org/en/download/) (0.16+)
-and [latest Electrum wallet](https://electrum.org/#download) (3.3+).
+[latest Tapyrus Core](https://github.com/chaintope/tapyrus-core/releases/) (0.4.0+).
 
 Also, install the following packages (on Debian):
 ```bash
@@ -22,8 +21,8 @@ Optionally, you may install [`cfg_me`](https://github.com/Kixunil/cfg_me) tool f
 
 First build should take ~20 minutes:
 ```bash
-$ git clone https://github.com/romanz/electrs
-$ cd electrs
+$ git clone https://github.com/chaintope/electrs-tapyrus
+$ cd electrs-tapyrus
 $ cargo build --release
 ```
 
@@ -34,47 +33,37 @@ If you installed `cfg_me` to generate man page, you can run `cfg_me man` to see 
 ```bash
 $ docker build -t electrs-app .
 $ docker run --network host \
-             --volume $HOME/.bitcoin:/home/user/.bitcoin:ro \
+             --volume $HOME/.tapyrus:/home/user/.tapyrus:ro \
              --volume $PWD:/home/user \
              --rm -i -t electrs-app \
-             electrs -vvvv --timestamp --db-dir /home/user/db
+             electrs -vvvv --timestamp --db-dir /home/user/db \
+             --daemon-dir /home/user/.tapyrus/prod-1 --network-id 1
 ```
 
 ## Native OS packages
 
-There are currently no official/stable binary pckages.
-
-However, there's an [**experimental** repository for Debian 10](https://deb.ln-ask.me) (should work on recent Ubuntu, but not tested well-enough). The repository provides several significant advantages:
-
-* Everything is completely automatic - after installing `electrs` via `apt`, it's running and will automatically run on reboot, restart after crash... It also connects to bitoind out-of-the-box, no messing with config files or anything else. It just works.
-* Prebuilt binaries save you a lot of time. The binary installation of all the components is under 3 minutes on common hardware. Building from source is much longer.
-* The repository contains some seurity hardening out-of-the-box - separate users for services, use of [btc-rpc-proxy](https://github.com/Kixunil/btc-rpc-proxy), etc.
-
-And two significant disadvantages:
-
-* It's currently impossible to independently verify the built packages, so you have to trust the author of the repository. This will hopefully change in the future.
-* The repository is considered experimental and not well tested yet. The author of the repository is also a contributor to `electrs` and appreciates [bug reports](https://github.com/Kixunil/cryptoanarchy-deb-repo-builder/issues), [test reports](https://github.com/Kixunil/cryptoanarchy-deb-repo-builder/issues/61), and other contributions.
+There are currently no official/stable binary packages.
 
 ## Manual configuration
 
 This applies only if you do **not** use some other automated systems such as Debian packages. If you use automated systems, refer to their documentation first!
 
-### Bitcoind configuration
+### Tapyrusd configuration
 
-Pruning must be turned **off** for `electrs` to work. `txindex` is allowed but unnecessary for `electrs`. However, you might still need it if you run other services (e.g.`eclair`)
+Pruning must be turned **off** for `electrs-tapyrus` to work. `txindex` is allowed but unnecessary for `electrs-tapyrus`. However, you might still need it if you run other services (e.g.`eclair`)
 
-The highly recommended way of authenticating `electrs` is using cookie file. It's the most secure and robust method. Set `rpccookiefile` option of `bitcoind` to a file within an existing directory which it can access. You can skip it if you're running both daemons under the same user and with the default directories.
+The highly recommended way of authenticating `electrs-tapyrus` is using cookie file. It's the most secure and robust method. Set `rpccookiefile` option of `tapyrusd` to a file within an existing directory which it can access. You can skip it if you're running both daemons under the same user and with the default directories.
 
-`electrs` will wait for `bitcoind` to sync, however, you will be unabe to use it until the syncing is done.
+`electrs-tapyrus` will wait for `tapyrusd` to sync, however, you will be unabe to use it until the syncing is done.
 
-Example command for running `bitcoind` (assuming same user, default dirs):
+Example command for running `tapyrusd` (assuming same user, default dirs):
 
 ```bash
-$ bitcoind -server=1 -txindex=0 -prune=0
+$ tapyrusd -server=1 -txindex=0 -prune=0
 ```
-### Electrs configuration
+### ElectrsTapyrus configuration
 
-Electrs can be configured using command line, environment variables and configuration files (or their combination). It is highly recommended to use configuration files for any non-trivial setups since it's easier to manage. If you're setting password manually instead of cookie files, configuration file is the only way to set it due to security reasons.
+ElectrsTapyrus can be configured using command line, environment variables and configuration files (or their combination). It is highly recommended to use configuration files for any non-trivial setups since it's easier to manage. If you're setting password manually instead of cookie files, configuration file is the only way to set it due to security reasons.
 
 ### Configuration files and priorities
 
@@ -86,35 +75,28 @@ For each command line argument an environment variable of the same name with `EL
 
 Finally, you need to use a number in config file if you want to increase verbosity (e.g. `verbose = 3` is equivalent to `-vvv`) and `true` value in case of flags (e.g. `timestamp = true`)
 
-If you are using `-rpcuser=USER` and `-rpcpassword=PASSWORD` of `bitcoind` for authentication, please use `cookie="USER:PASSWORD"` option in one of the [config files](https://github.com/romanz/electrs/blob/master/doc/usage.md#configuration-files-and-priorities).
-Otherwise, [`~/.bitcoin/.cookie`](https://github.com/bitcoin/bitcoin/blob/0212187fc624ea4a02fc99bc57ebd413499a9ee1/contrib/debian/examples/bitcoin.conf#L70-L72) will be used as the default cookie file, allowing this server to use bitcoind JSONRPC interface.
+If you are using `-rpcuser=USER` and `-rpcpassword=PASSWORD` of `tapyrusd` for authentication, please use `cookie="USER:PASSWORD"` option in one of the [config files](https://github.com/chaintope/electrs-tapyrus/blob/master/doc/usage.md#configuration-files-and-priorities).
+Otherwise, [`~/.tapyrus/.cookie`](https://github.com/chaintope/tapyrus-core/blob/848a9dab4e9e70d99d35feb7fbf833947b71df9c/share/examples/bitcoin.conf#L70-L72) will be used as the default cookie file, allowing this server to use tapyrusd JSONRPC interface.
 
 ### Electrs usage
 
 First index sync should take ~1.5 hours (on a dual core Intel CPU @ 3.3 GHz, 8 GB RAM, 1TB WD Blue HDD):
 ```bash
-$ cargo run --release -- -vvv --timestamp --db-dir ./db --electrum-rpc-addr="127.0.0.1:50001"
-2018-08-17T18:27:42 - INFO - NetworkInfo { version: 179900, subversion: "/Satoshi:0.17.99/" }
-2018-08-17T18:27:42 - INFO - BlockchainInfo { chain: "main", blocks: 537204, headers: 537204, bestblockhash: "0000000000000000002956768ca9421a8ddf4e53b1d81e429bd0125a383e3636", pruned: false, initialblockdownload: false }
-2018-08-17T18:27:42 - DEBUG - opening DB at "./db/mainnet"
-2018-08-17T18:27:42 - DEBUG - full compaction marker: None
-2018-08-17T18:27:42 - INFO - listing block files at "/home/user/.bitcoin/blocks/blk*.dat"
-2018-08-17T18:27:42 - INFO - indexing 1348 blk*.dat files
-2018-08-17T18:27:42 - DEBUG - found 0 indexed blocks
-2018-08-17T18:27:55 - DEBUG - applying 537205 new headers from height 0
-2018-08-17T19:31:01 - DEBUG - no more blocks to index
-2018-08-17T19:31:03 - DEBUG - no more blocks to index
-2018-08-17T19:31:03 - DEBUG - last indexed block: best=0000000000000000002956768ca9421a8ddf4e53b1d81e429bd0125a383e3636 height=537204 @ 2018-08-17T15:24:02Z
-2018-08-17T19:31:05 - DEBUG - opening DB at "./db/mainnet"
-2018-08-17T19:31:06 - INFO - starting full compaction
-2018-08-17T19:58:19 - INFO - finished full compaction
-2018-08-17T19:58:19 - INFO - enabling auto-compactions
-2018-08-17T19:58:19 - DEBUG - opening DB at "./db/mainnet"
-2018-08-17T19:58:26 - DEBUG - applying 537205 new headers from height 0
-2018-08-17T19:58:27 - DEBUG - downloading new block headers (537205 already indexed) from 000000000000000000150d26fcc38b8c3b71ae074028d1d50949ef5aa429da00
-2018-08-17T19:58:27 - INFO - best=000000000000000000150d26fcc38b8c3b71ae074028d1d50949ef5aa429da00 height=537218 @ 2018-08-17T16:57:50Z (14 left to index)
-2018-08-17T19:58:28 - DEBUG - applying 14 new headers from height 537205
-2018-08-17T19:58:29 - INFO - RPC server running on 127.0.0.1:50001
+$ cargo run --release -- -vvv --timestamp --db-dir ./db --electrum-rpc-addr="127.0.0.1:50001" --daemon-dir $HOME/.tapyrus/prod-1 --network-id 1
+Config { log: StdErrLog { verbosity: Debug, quiet: false, show_level: true, timestamp: Millisecond, modules: [], writer: "stderr", color_choice: Auto }, network_type: prod, db_path: "./db/prod", daemon_dir: "/home/tapyrus/.tapyrus/prod-1", daemon_rpc_addr: V6([::1]:12381), electrum_rpc_addr: V4(127.0.0.1:50001), monitoring_addr: V4(127.0.0.1:4224), jsonrpc_import: false, index_batch_size: 100, bulk_index_threads: 8, tx_cache_size: 10485760, txid_limit: 100, server_banner: "Welcome to electrs 0.2.0 (Electrum Rust Server)!", blocktxids_cache_size: 10485760 }
+2020-07-02T19:56:30.247+09:00 - DEBUG - Server listening on 127.0.0.1:4224
+2020-07-02T19:56:30.247+09:00 - DEBUG - Running accept thread
+2020-07-02T19:56:30.247+09:00 - WARN - failed to export process stats: failed to read /proc/self/stat
+2020-07-02T19:56:30.252+09:00 - INFO - NetworkInfo { version: 40000, subversion: "/Tapyrus Core:0.4.0/", relayfee: 0.00001 }
+2020-07-02T19:56:30.255+09:00 - INFO - BlockchainInfo { chain: "1", blocks: 530, headers: 530, verificationprogress: 1.0, bestblockhash: "133b1319351a5b66a3f62182da1415aea5935460bde38df4a4e9b94e8817f159", pruned: false, initialblockdownload: false }
+2020-07-02T19:56:30.258+09:00 - DEBUG - opening DB at "./db/prod"
+2020-07-02T19:56:30.267+09:00 - DEBUG - applying 428 new headers from height 0
+2020-07-02T19:56:30.268+09:00 - INFO - enabling auto-compactions
+2020-07-02T19:56:30.283+09:00 - DEBUG - relayfee: 0.00001 BTC
+2020-07-02T19:56:30.290+09:00 - DEBUG - downloading new block headers (428 already indexed) from 133b1319351a5b66a3f62182da1415aea5935460bde38df4a4e9b94e8817f159
+2020-07-02T19:56:30.482+09:00 - INFO - best=133b1319351a5b66a3f62182da1415aea5935460bde38df4a4e9b94e8817f159 height=530 @ 2020-07-02T10:56:19Z (103 left to index)
+2020-07-02T19:56:30.962+09:00 - DEBUG - applying 103 new headers from height 428
+2020-07-02T19:56:30.964+09:00 - INFO - Electrum RPC server running on 127.0.0.1:50001 (protocol 1.4)
 ```
 You can specify options via command-line parameters, environment variables or using config files. See the documentation above.
 
@@ -123,16 +105,16 @@ Note that the final DB size should be ~20% of the `blk*.dat` files, but it may i
 If initial sync fails due to `memory allocation of xxxxxxxx bytes failedAborted` errors, as may happen on devices with limited RAM, try the following arguments when starting `electrs`. It should take roughly 18 hours to sync and compact the index on an ODROID-HC1 with 8 CPU cores @ 2GHz, 2GB RAM, and an SSD using the following command:
 
 ```bash
-$ cargo run --release -- -vvvv --index-batch-size=10 --jsonrpc-import --db-dir ./db --electrum-rpc-addr="127.0.0.1:50001"
+$ cargo run --release -- -vvvv --index-batch-size=10 --jsonrpc-import --db-dir ./db --electrum-rpc-addr="127.0.0.1:50001" --daemon-dir $HOME/.tapyrus/prod-1 --network-id 1
 ```
 
 The index database is stored here:
 ```bash
 $ du db/
-38G db/mainnet/
+38G db/prod/
 ```
 
-See below for [extra configuration suggestions](https://github.com/romanz/electrs/blob/master/doc/usage.md#extra-configuration-suggestions) that you might want to consider.
+See below for [extra configuration suggestions](https://github.com/chaintope/electrs-tapyrus/blob/master/doc/usage.md#extra-configuration-suggestions) that you might want to consider.
 
 ## Electrum client
 
@@ -235,18 +217,18 @@ For more details, see http://docs.electrum.org/en/latest/tor.html.
 
 If you use [the **experimental** Debian repository](https://github.com/romanz/electrs/blob/master/doc/usage.md#cnative-os-packages), you should skip this section, as the appropriate systemd unit file is installed automatically.
 
-You may wish to have systemd manage electrs so that it's "always on." Here is a sample unit file (which assumes that the bitcoind unit file is `bitcoind.service`):
+You may wish to have systemd manage electrs so that it's "always on." Here is a sample unit file (which assumes that the tapyrusd unit file is `tapyrusd.service`):
 
 ```
 [Unit]
 Description=Electrs
-After=bitcoind.service
+After=tapyrusd.service
 
 [Service]
-WorkingDirectory=/home/bitcoin/electrs
-ExecStart=/home/bitcoin/electrs/target/release/electrs --db-dir ./db --electrum-rpc-addr="127.0.0.1:50001"
-User=bitcoin
-Group=bitcoin
+WorkingDirectory=/home/tapyrus/electrs
+ExecStart=/home/tapyrus/electrs/target/release/electrs --db-dir ./db --electrum-rpc-addr="127.0.0.1:50001"
+User=tapyrus
+Group=tapyrus
 Type=simple
 KillMode=process
 TimeoutSec=60
