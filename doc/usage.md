@@ -116,28 +116,6 @@ $ du db/
 
 See below for [extra configuration suggestions](https://github.com/chaintope/electrs-tapyrus/blob/master/doc/usage.md#extra-configuration-suggestions) that you might want to consider.
 
-## Electrum client
-
-If you happen to use the Electrum client from [the **experimental** Debian repository](https://github.com/chaintope/electrs-tapyrus/blob/master/doc/usage.md#cnative-os-packages), it's pre-configured out-of-the-box already. Read below otherwise.
-
-There's a prepared script for launching `electrum` in such way to connect only to the local `electrs` instance to protect your privacy.
-
-```bash
-$ ./scripts/local-electrum.bash
-+ ADDR=127.0.0.1
-+ PORT=50001
-+ PROTOCOL=t
-+ electrum --oneserver --server=127.0.0.1:50001:t
-<snip>
-```
-
-You can persist Electrum configuration (see `~/.electrum/config`) using:
-```bash
-$ electrum setconfig oneserver true
-$ electrum setconfig server 127.0.0.1:50001:t
-$ electrum   # will connect only to the local server
-```
-
 ## Extra configuration suggestions
 
 ### SSL connection
@@ -193,8 +171,6 @@ HiddenServiceVersion 3
 HiddenServicePort 50001 127.0.0.1:50001
 ```
 
-If you use [the **experimental** Debian repository](https://github.com/chaintope/electrs-tapyrus/blob/master/doc/usage.md#cnative-os-packages), it is cleaner to install `tor-hs-patch-config` using `apt` and then placing the configuration into a file inside `/etc/tor/hidden-services.d`.
-
 Restart the service:
 ```
 $ sudo systemctl restart tor
@@ -214,8 +190,6 @@ $ electrum --oneserver --server <your-onion-address>.onion:50001:t --proxy socks
 For more details, see http://docs.electrum.org/en/latest/tor.html.
 
 ### Sample Systemd Unit File
-
-If you use [the **experimental** Debian repository](https://github.com/chaintope/electrs-tapyrus/blob/master/doc/usage.md#cnative-os-packages), you should skip this section, as the appropriate systemd unit file is installed automatically.
 
 You may wish to have systemd manage electrs so that it's "always on." Here is a sample unit file (which assumes that the tapyrusd unit file is `tapyrusd.service`):
 
