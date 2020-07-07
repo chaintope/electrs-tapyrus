@@ -18,7 +18,7 @@ use electrs_tapyrus::{
     errors::*,
     index::Index,
     metrics::Metrics,
-    query::{AssetCache, Query},
+    query::{OpenAssetCache, Query},
     rpc::RPC,
     signal::Waiter,
     store::{full_compaction, is_fully_compacted, DBStore},
@@ -60,7 +60,7 @@ fn run_server(config: &Config) -> Result<()> {
 
     let app = App::new(store, index, daemon, &config)?;
     let tx_cache = TransactionCache::new(config.tx_cache_size, &metrics);
-    let asset_cache = AssetCache::new(config.tx_cache_size);
+    let asset_cache = OpenAssetCache::new(config.tx_cache_size);
     let query = Query::new(
         app.clone(),
         &metrics,
