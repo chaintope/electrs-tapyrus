@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::sync::RwLock;
 use tapyrus::blockdata::block::{Block, BlockHeader};
+use tapyrus::blockdata::script::Script;
 use tapyrus::blockdata::transaction::{Transaction, TxIn, TxOut};
 use tapyrus::consensus::encode::{deserialize, serialize};
 use tapyrus::hash_types::{BlockHash, Txid};
@@ -81,11 +82,18 @@ pub struct TxOutRow {
 }
 
 impl TxOutRow {
-    pub fn new(txid: &Txid, output: &TxOut) -> TxOutRow {
+    pub fn new(txid: &Txid, output: &TxOut, colored: bool) -> TxOutRow {
+        let script = if colored {
+            extract_uncolored(&output.script_pubkey)
+                .expect("Expected colored script(cp2pkh or cp2sh) but script is not colored")
+        } else {
+            Script::from(Script::from(Vec::from(&output.script_pubkey[..])))
+        };
+
         TxOutRow {
             key: TxOutKey {
                 code: b'O',
-                script_hash_prefix: hash_prefix(&compute_script_hash(&output.script_pubkey[..])),
+                script_hash_prefix: hash_prefix(&compute_script_hash(&script[..])),
             },
             txid_prefix: hash_prefix(&txid[..]),
         }
@@ -170,6 +178,14 @@ pub fn compute_script_hash(data: &[u8]) -> FullHash {
     hash
 }
 
+fn extract_uncolored(script: &Script) -> Option<Script> {
+    if script.is_colored() {
+        Some(Script::from(Vec::from(&script[35..])))
+    } else {
+        None
+    }
+}
+
 pub fn index_transaction<'a>(
     txn: &'a Transaction,
     height: usize,
@@ -187,11 +203,17 @@ pub fn index_transaction<'a>(
     let outputs = txn
         .output
         .iter()
-        .map(move |output| TxOutRow::new(&txid, &output).to_row());
+        .map(move |output| TxOutRow::new(&txid, &output, false).to_row());
+    let colored_outputs = txn
+        .output
+        .iter()
+        .filter(|o| o.script_pubkey.is_colored())
+        .map(move |output| TxOutRow::new(&txid, &output, true).to_row());
 
     // Persist transaction ID and confirmed height
     inputs
         .chain(outputs)
+        .chain(colored_outputs)
         .chain(std::iter::once(TxRow::new(&txid, height as u32).to_row()))
 }
 
@@ -434,5 +456,90 @@ impl Index {
         self.stats
             .update_height(self.headers.read().unwrap().len() - 1);
         Ok(tip)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tapyrus::blockdata::script::Builder;
+
+    #[test]
+    fn test_extract_uncolored() {
+        // for cp2pkh
+        let hex = "21c3ec2fd806701a3f55808cbec3922c38dafaa3070c48c803e9043ee3642c660b46bc76a91446c2fbfbecc99a63148fa076de58cf29b0bcf0b088ac";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
+        let hex = "76a91446c2fbfbecc99a63148fa076de58cf29b0bcf0b088ac";
+        let expected = Builder::from(hex::decode(hex).unwrap()).into_script();
+        assert!(script.is_cp2pkh());
+        assert!(expected.is_p2pkh());
+        assert_eq!(extract_uncolored(&script).unwrap(), expected);
+
+        // for cp2sh
+        let hex = "21c3ec2fd806701a3f55808cbec3922c38dafaa3070c48c803e9043ee3642c660b46bca9147620a79e8657d066cff10e21228bf983cf546ac687";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
+        let hex = "a9147620a79e8657d066cff10e21228bf983cf546ac687";
+        let expected = Builder::from(hex::decode(hex).unwrap()).into_script();
+        assert!(script.is_cp2sh());
+        assert!(expected.is_p2sh());
+        assert_eq!(extract_uncolored(&script).unwrap(), expected);
+
+        // for p2pkh(non-colored)
+        let hex = "76a91446c2fbfbecc99a63148fa076de58cf29b0bcf0b088ac";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
+        assert!(extract_uncolored(&script).is_none());
+    }
+
+    #[test]
+    fn test_index_transaction() {
+        let input1 = TxIn::default();
+
+        // cp2pkh
+        let hex = "21c3ec2fd806701a3f55808cbec3922c38dafaa3070c48c803e9043ee3642c660b46bc76a91446c2fbfbecc99a63148fa076de58cf29b0bcf0b088ac";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
+        let output1 = TxOut {
+            value: 1,
+            script_pubkey: script,
+        };
+
+        // cp2sh
+        let hex = "21c3ec2fd806701a3f55808cbec3922c38dafaa3070c48c803e9043ee3642c660b46bca9147620a79e8657d066cff10e21228bf983cf546ac687";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
+        let output2 = TxOut {
+            value: 1,
+            script_pubkey: script,
+        };
+
+        // p2pkh(non-colored)
+        let hex = "76a91446c2fbfbecc99a63148fa076de58cf29b0bcf0b088ac";
+        let script = Builder::from(hex::decode(hex).unwrap()).into_script();
+        let output3 = TxOut {
+            value: 1,
+            script_pubkey: script,
+        };
+
+        // Uncolored Transaction
+        let txn = Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![input1.clone()],
+            output: vec![output3.clone()],
+        };
+        let height = 1;
+        let rows = index_transaction(&txn, height);
+        //1 TxRow and 1 TxOutRow
+        assert_eq!(rows.count(), 2);
+
+        // Colored Transaction
+        let txn = Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![input1],
+            output: vec![output1, output2, output3],
+        };
+        let height = 1;
+        let rows = index_transaction(&txn, height);
+        //1 TxRow and 5 TxOutRow
+        assert_eq!(rows.count(), 6);
     }
 }
