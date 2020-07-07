@@ -31,7 +31,7 @@ pub struct FundingOutput {
     pub height: u32,
     pub output_index: usize,
     pub value: u64,
-    pub asset: Option<Asset>,
+    pub asset: Option<OpenAsset>,
 }
 
 impl FundingOutput {
@@ -40,7 +40,7 @@ impl FundingOutput {
         height: u32,
         output_index: usize,
         value: u64,
-        asset: Option<Asset>,
+        asset: Option<OpenAsset>,
     ) -> Self {
         FundingOutput {
             txn_id,
@@ -90,18 +90,18 @@ impl FundingOutput {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Asset {
+pub struct OpenAsset {
     pub asset_id: AssetId,
     pub asset_quantity: u64,
     pub metadata: Metadata,
 }
 
-impl Serialize for Asset {
+impl Serialize for OpenAsset {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Asset", 3)?;
+        let mut state = serializer.serialize_struct("OpenAsset", 3)?;
         state.serialize_field("asset_id", &format!("{}", &self.asset_id))?;
         state.serialize_field("asset_quantity", &self.asset_quantity)?;
         state.serialize_field("metadata", &self.metadata)?;
@@ -272,20 +272,20 @@ fn txids_by_funding_output(
         .collect()
 }
 
-pub struct AssetCache {
-    map: Mutex<LruCache<Txid, Vec<Option<Asset>>>>,
+pub struct OpenAssetCache {
+    map: Mutex<LruCache<Txid, Vec<Option<OpenAsset>>>>,
 }
 
-impl AssetCache {
-    pub fn new(capacity: usize) -> AssetCache {
-        AssetCache {
+impl OpenAssetCache {
+    pub fn new(capacity: usize) -> OpenAssetCache {
+        OpenAssetCache {
             map: Mutex::new(LruCache::new(capacity)),
         }
     }
 
-    fn get_or_else<F>(&self, txid: &Txid, load_assets_func: F) -> Result<Vec<Option<Asset>>>
+    fn get_or_else<F>(&self, txid: &Txid, load_assets_func: F) -> Result<Vec<Option<OpenAsset>>>
     where
-        F: FnOnce() -> Result<Vec<Option<Asset>>>,
+        F: FnOnce() -> Result<Vec<Option<OpenAsset>>>,
     {
         if let Some(assets) = self.map.lock().unwrap().get(txid) {
             return Ok(assets.clone());
@@ -300,7 +300,7 @@ pub struct Query {
     app: Arc<App>,
     tracker: RwLock<Tracker>,
     tx_cache: TransactionCache,
-    asset_cache: AssetCache,
+    asset_cache: OpenAssetCache,
     txid_limit: usize,
     duration: HistogramVec,
 }
@@ -310,7 +310,7 @@ impl Query {
         app: Arc<App>,
         metrics: &Metrics,
         tx_cache: TransactionCache,
-        asset_cache: AssetCache,
+        asset_cache: OpenAssetCache,
         txid_limit: usize,
     ) -> Arc<Query> {
         Arc::new(Query {
@@ -398,7 +398,7 @@ impl Query {
         result
     }
 
-    fn get_colored_outputs(&self, txn: &Transaction) -> Vec<Option<Asset>> {
+    fn get_colored_outputs(&self, txn: &Transaction) -> Vec<Option<OpenAsset>> {
         if txn.is_coin_base() {
             txn.output.iter().map(|_| None).collect()
         } else {
@@ -427,13 +427,13 @@ impl Query {
     }
 
     fn compute_assets(
-        prev_outs: Vec<(TxOut, Option<Asset>)>,
+        prev_outs: Vec<(TxOut, Option<OpenAsset>)>,
         marker_output_index: usize,
         txn: &Transaction,
         quantities: Vec<u64>,
         network_type: Network,
         metadata: &Metadata,
-    ) -> Vec<Option<Asset>> {
+    ) -> Vec<Option<OpenAsset>> {
         assert!(quantities.len() <= txn.output.len() - 1);
         assert!(!prev_outs.is_empty());
 
@@ -450,7 +450,7 @@ impl Query {
         );
         for i in 0..marker_output_index {
             let asset = if i < quantities.len() && quantities[i] > 0 {
-                Some(Asset {
+                Some(OpenAsset {
                     asset_id: issuance_asset_id.clone(),
                     asset_quantity: quantities[i],
                     metadata: metadata.clone(),
@@ -495,7 +495,7 @@ impl Query {
                 }
             }
             let asset = if asset_id.is_some() && quantity > 0 {
-                Some(Asset {
+                Some(OpenAsset {
                     asset_id: asset_id.unwrap(),
                     asset_quantity: quantity,
                     metadata: metadata.clone(),
@@ -513,7 +513,7 @@ impl Query {
         result
     }
 
-    fn get_output(&self, txid: &Txid, index: u32) -> (TxOut, Option<Asset>) {
+    fn get_output(&self, txid: &Txid, index: u32) -> (TxOut, Option<OpenAsset>) {
         let txn = self.load_txn(txid, None).expect("txn not found");
         let colored_outputs = self.load_assets(&txn).expect("asset not found");
         (
@@ -632,7 +632,7 @@ impl Query {
         })
     }
 
-    fn load_assets(&self, txn: &Transaction) -> Result<Vec<Option<Asset>>> {
+    fn load_assets(&self, txn: &Transaction) -> Result<Vec<Option<OpenAsset>>> {
         // TODO: use DBStore for improving performance.
         let txid = txn.malfix_txid();
         self.asset_cache
@@ -797,7 +797,7 @@ mod tests {
     use tapyrus::network::constants::Network;
 
     use crate::errors::*;
-    use crate::query::{Asset, AssetCache, AssetId, FundingOutput, Query, SpendingInput, Status};
+    use crate::query::{OpenAsset, OpenAssetCache, AssetId, FundingOutput, Query, SpendingInput, Status};
 
     fn status() -> Status {
         let txid1 =
@@ -922,12 +922,12 @@ mod tests {
     }
 
     #[test]
-    fn test_asset_cache() {
-        let asset_cache = AssetCache::new(10);
+    fn test_open_asset_cache() {
+        let asset_cache = OpenAssetCache::new(10);
         let txid =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
-        let asset = Asset {
+        let asset = OpenAsset {
             asset_id: AssetId::new(&Script::new(), Network::Prod),
             asset_quantity: 1,
             metadata: empty_metadata(),
@@ -942,7 +942,7 @@ mod tests {
                 panic!("error");
             }
         }
-        //Use assets in cache
+        //Use openassets in cache
         let result2 = asset_cache.get_or_else(&txid, || {
             Err(Error(
                 ErrorKind::Connection("test".to_string()),
@@ -958,30 +958,30 @@ mod tests {
         }
     }
 
-    fn asset_1(quantity: u64, metadata: Metadata) -> Option<Asset> {
+    fn asset_1(quantity: u64, metadata: Metadata) -> Option<OpenAsset> {
         let hex = "76a914010966776006953d5567439e5e39f86a0d273bee88ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
-        Some(Asset {
+        Some(OpenAsset {
             asset_id: AssetId::new(&script, Network::Prod),
             asset_quantity: quantity,
             metadata: metadata,
         })
     }
 
-    fn asset_2(quantity: u64, metadata: Metadata) -> Option<Asset> {
+    fn asset_2(quantity: u64, metadata: Metadata) -> Option<OpenAsset> {
         let hex = "76a914b60fd86c7464b08d83d98ebeb59655d71be3b22688ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
-        Some(Asset {
+        Some(OpenAsset {
             asset_id: AssetId::new(&script, Network::Prod),
             asset_quantity: quantity,
             metadata: metadata,
         })
     }
 
-    fn asset_3(quantity: u64, metadata: Metadata) -> Option<Asset> {
+    fn asset_3(quantity: u64, metadata: Metadata) -> Option<OpenAsset> {
         let hex = "76a9149f00983b75904599a5e9c2e53c8b1002fc42e9ac88ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
-        Some(Asset {
+        Some(OpenAsset {
             asset_id: AssetId::new(&script, Network::Prod),
             asset_quantity: quantity,
             metadata: metadata,
