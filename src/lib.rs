@@ -23,6 +23,7 @@ pub mod fake;
 pub mod index;
 pub mod mempool;
 pub mod metrics;
+pub mod open_assets;
 pub mod query;
 pub mod rpc;
 pub mod signal;

@@ -16,6 +16,7 @@ use tapyrus::hash_types::Txid;
 
 use crate::errors::*;
 use crate::metrics::{Gauge, HistogramOpts, HistogramVec, MetricOpts, Metrics};
+use crate::open_assets::OpenAssetFilter;
 use crate::query::{Query, Status};
 use crate::util::{spawn_thread, Channel, HeaderEntry, SyncChannel};
 
