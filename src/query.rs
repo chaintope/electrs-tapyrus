@@ -69,13 +69,14 @@ impl FundingOutput {
 }
 
 impl FundingOutput {
-    pub fn to_json(&self) -> Value {
-        if self.asset.is_none() {
+    pub fn to_json(&self, open_assets: bool) -> Value {
+        if open_assets && self.asset.is_some() {
             json!({
                 "height": self.height,
                 "tx_pos": self.output_index,
                 "tx_hash": self.txn_id.to_hex(),
                 "value": self.value,
+                "asset": self.asset.as_ref().expect("failed to read asset"),
             })
         } else {
             json!({
@@ -83,7 +84,6 @@ impl FundingOutput {
                 "tx_pos": self.output_index,
                 "tx_hash": self.txn_id.to_hex(),
                 "value": self.value,
-                "asset": self.asset.as_ref().expect("failed to read asset"),
             })
         }
     }
@@ -883,7 +883,7 @@ mod tests {
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
         let output = FundingOutput::build(txid, 0, 1, 2, None);
-        let value = output.to_json();
+        let value = output.to_json(false);
         assert_json_eq!(
             value,
             json!({
@@ -901,7 +901,7 @@ mod tests {
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
         let output = FundingOutput::build(txid, 0, 1, 2, asset_1(3, url_metadata()));
-        let value = output.to_json();
+        let value = output.to_json(true);
         assert_json_eq!(
             value,
             json!({
