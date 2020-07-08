@@ -67,27 +67,37 @@ fn unspent_from_status(status: &Status) -> Value {
         status
             .unspent()
             .into_iter()
-            .map(|out| out.to_json())
+            .map(|out| out.to_json(false))
             .collect()
     ))
 }
 
-fn colored_unspent_from_status(status: &Status) -> Value {
+fn open_assets_unspent_from_status(status: &Status) -> Value {
+    json!(Value::Array(
+        status
+            .unspent()
+            .into_iter()
+            .map(|out| out.to_json(true))
+            .collect()
+    ))
+}
+
+fn open_assets_colored_unspent_from_status(status: &Status) -> Value {
     json!(Value::Array(
         status
             .colored_unspent()
             .into_iter()
-            .map(|out| out.to_json())
+            .map(|out| out.to_json(true))
             .collect()
     ))
 }
 
-fn uncolored_unspent_from_status(status: &Status) -> Value {
+fn open_assets_uncolored_unspent_from_status(status: &Status) -> Value {
     json!(Value::Array(
         status
             .uncolored_unspent()
             .into_iter()
-            .map(|out| out.to_json())
+            .map(|out| out.to_json(true))
             .collect()
     ))
 }
@@ -257,16 +267,21 @@ impl Connection {
         Ok(unspent_from_status(&self.query.status(&script_hash[..])?))
     }
 
-    fn blockchain_scripthash_listcoloredunspent(&self, params: &[Value]) -> Result<Value> {
+    fn blockchain_openassets_scripthash_listunspent(&self, params: &[Value]) -> Result<Value> {
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
-        Ok(colored_unspent_from_status(
+        Ok(open_assets_unspent_from_status(&self.query.status(&script_hash[..])?))
+    }
+
+    fn blockchain_openassets_scripthash_listcoloredunspent(&self, params: &[Value]) -> Result<Value> {
+        let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        Ok(open_assets_colored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
         ))
     }
 
-    fn blockchain_scripthash_listuncoloredunspent(&self, params: &[Value]) -> Result<Value> {
+    fn blockchain_openassets_scripthash_listuncoloredunspent(&self, params: &[Value]) -> Result<Value> {
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
-        Ok(uncolored_unspent_from_status(
+        Ok(open_assets_uncolored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
         ))
     }
@@ -340,11 +355,12 @@ impl Connection {
             "blockchain.scripthash.get_balance" => self.blockchain_scripthash_get_balance(&params),
             "blockchain.scripthash.get_history" => self.blockchain_scripthash_get_history(&params),
             "blockchain.scripthash.listunspent" => self.blockchain_scripthash_listunspent(&params),
-            "blockchain.scripthash.listcoloredunspent" => {
-                self.blockchain_scripthash_listcoloredunspent(&params)
+            "blockchain.openassets.scripthash.listunspent" => self.blockchain_openassets_scripthash_listunspent(&params),
+            "blockchain.openassets.scripthash.listcoloredunspent" => {
+                self.blockchain_openassets_scripthash_listcoloredunspent(&params)
             }
-            "blockchain.scripthash.listuncoloredunspent" => {
-                self.blockchain_scripthash_listuncoloredunspent(&params)
+            "blockchain.open_assets.scripthash.listuncoloredunspent" => {
+                self.blockchain_openassets_scripthash_listuncoloredunspent(&params)
             }
             "blockchain.scripthash.subscribe" => self.blockchain_scripthash_subscribe(&params),
             "blockchain.transaction.broadcast" => self.blockchain_transaction_broadcast(&params),
