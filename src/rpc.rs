@@ -269,17 +269,25 @@ impl Connection {
 
     fn blockchain_openassets_scripthash_listunspent(&self, params: &[Value]) -> Result<Value> {
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
-        Ok(open_assets_unspent_from_status(&self.query.status(&script_hash[..])?))
+        Ok(open_assets_unspent_from_status(
+            &self.query.status(&script_hash[..])?,
+        ))
     }
 
-    fn blockchain_openassets_scripthash_listcoloredunspent(&self, params: &[Value]) -> Result<Value> {
+    fn blockchain_openassets_scripthash_listcoloredunspent(
+        &self,
+        params: &[Value],
+    ) -> Result<Value> {
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_colored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
         ))
     }
 
-    fn blockchain_openassets_scripthash_listuncoloredunspent(&self, params: &[Value]) -> Result<Value> {
+    fn blockchain_openassets_scripthash_listuncoloredunspent(
+        &self,
+        params: &[Value],
+    ) -> Result<Value> {
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_uncolored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
@@ -355,7 +363,9 @@ impl Connection {
             "blockchain.scripthash.get_balance" => self.blockchain_scripthash_get_balance(&params),
             "blockchain.scripthash.get_history" => self.blockchain_scripthash_get_history(&params),
             "blockchain.scripthash.listunspent" => self.blockchain_scripthash_listunspent(&params),
-            "blockchain.openassets.scripthash.listunspent" => self.blockchain_openassets_scripthash_listunspent(&params),
+            "blockchain.openassets.scripthash.listunspent" => {
+                self.blockchain_openassets_scripthash_listunspent(&params)
+            }
             "blockchain.openassets.scripthash.listcoloredunspent" => {
                 self.blockchain_openassets_scripthash_listcoloredunspent(&params)
             }
