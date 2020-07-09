@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::sync::RwLock;
 use tapyrus::blockdata::block::{Block, BlockHeader};
-use tapyrus::blockdata::script::Script;
+use tapyrus::blockdata::script::{ColorIdentifier, Script};
 use tapyrus::blockdata::transaction::{Transaction, TxIn, TxOut};
 use tapyrus::consensus::encode::{deserialize, serialize};
 use tapyrus::hash_types::{BlockHash, Txid};
@@ -84,8 +84,9 @@ pub struct TxOutRow {
 impl TxOutRow {
     pub fn new(txid: &Txid, output: &TxOut, colored: bool) -> TxOutRow {
         let script = if colored {
-            extract_uncolored(&output.script_pubkey)
-                .expect("Expected colored script(cp2pkh or cp2sh) but script is not colored")
+            let (_color_id, script) = split_colored_script(&output.script_pubkey)
+                .expect("Expected colored script(cp2pkh or cp2sh) but script is not colored");
+            script
         } else {
             Script::from(Script::from(Vec::from(&output.script_pubkey[..])))
         };
@@ -178,9 +179,10 @@ pub fn compute_script_hash(data: &[u8]) -> FullHash {
     hash
 }
 
-fn extract_uncolored(script: &Script) -> Option<Script> {
+pub fn split_colored_script(script: &Script) -> Option<(ColorIdentifier, Script)> {
     if script.is_colored() {
-        Some(Script::from(Vec::from(&script[35..])))
+        let color_id = deserialize(&script[1..34]).expect("unexpect color_id");
+        Some((color_id, Script::from(Vec::from(&script[35..]))))
     } else {
         None
     }
@@ -465,7 +467,7 @@ mod tests {
     use tapyrus::blockdata::script::Builder;
 
     #[test]
-    fn test_extract_uncolored() {
+    fn test_split_colored_script() {
         // for cp2pkh
         let hex = "21c3ec2fd806701a3f55808cbec3922c38dafaa3070c48c803e9043ee3642c660b46bc76a91446c2fbfbecc99a63148fa076de58cf29b0bcf0b088ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
@@ -473,7 +475,7 @@ mod tests {
         let expected = Builder::from(hex::decode(hex).unwrap()).into_script();
         assert!(script.is_cp2pkh());
         assert!(expected.is_p2pkh());
-        assert_eq!(extract_uncolored(&script).unwrap(), expected);
+        assert_eq!(split_colored_script(&script).unwrap().1, expected);
 
         // for cp2sh
         let hex = "21c3ec2fd806701a3f55808cbec3922c38dafaa3070c48c803e9043ee3642c660b46bca9147620a79e8657d066cff10e21228bf983cf546ac687";
@@ -482,12 +484,12 @@ mod tests {
         let expected = Builder::from(hex::decode(hex).unwrap()).into_script();
         assert!(script.is_cp2sh());
         assert!(expected.is_p2sh());
-        assert_eq!(extract_uncolored(&script).unwrap(), expected);
+        assert_eq!(split_colored_script(&script).unwrap().1, expected);
 
         // for p2pkh(non-colored)
         let hex = "76a91446c2fbfbecc99a63148fa076de58cf29b0bcf0b088ac";
         let script = Builder::from(hex::decode(hex).unwrap()).into_script();
-        assert!(extract_uncolored(&script).is_none());
+        assert!(split_colored_script(&script).is_none());
     }
 
     #[test]

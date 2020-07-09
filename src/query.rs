@@ -7,13 +7,14 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tapyrus::blockdata::transaction::Transaction;
+use tapyrus::blockdata::script::ColorIdentifier;
 use tapyrus::consensus::encode::deserialize;
 use tapyrus::hash_types::{BlockHash, Txid};
 
 use crate::app::App;
 use crate::cache::TransactionCache;
 use crate::errors::*;
-use crate::index::{compute_script_hash, TxInRow, TxOutRow, TxRow};
+use crate::index::{compute_script_hash, split_colored_script, TxInRow, TxOutRow, TxRow};
 use crate::mempool::Tracker;
 use crate::metrics::{HistogramOpts, HistogramVec, Metrics};
 use crate::open_assets::{OpenAsset, OpenAssetCache, OpenAssetQuery};
@@ -25,6 +26,7 @@ pub struct FundingOutput {
     pub height: u32,
     pub output_index: usize,
     pub value: u64,
+    pub color_id: Option<ColorIdentifier>,
     pub asset: Option<OpenAsset>,
 }
 
@@ -34,6 +36,7 @@ impl FundingOutput {
         height: u32,
         output_index: usize,
         value: u64,
+        color_id: Option<ColorIdentifier>,
         asset: Option<OpenAsset>,
     ) -> Self {
         FundingOutput {
@@ -41,6 +44,7 @@ impl FundingOutput {
             height,
             output_index,
             value,
+            color_id,
             asset,
         }
     }
@@ -55,6 +59,15 @@ impl FundingOutput {
                 "tx_hash": self.txn_id.to_hex(),
                 "value": self.value,
                 "asset": self.asset.as_ref().expect("failed to read asset"),
+            })
+        } else if self.color_id.is_some() {
+            let color_id = self.color_id.as_ref().expect("failed to get color_id");
+            json!({
+                "height": self.height,
+                "tx_pos": self.output_index,
+                "tx_hash": self.txn_id.to_hex(),
+                "color_id": format!("{}", color_id),
+                "value": self.value,
             })
         } else {
             json!({
@@ -308,14 +321,32 @@ impl Query {
         let txn_id = t.txn.malfix_txid();
         let colored_outputs = self.get_colored_outputs(self.app.network_type(), &t.txn);
         for (index, output) in t.txn.output.iter().enumerate() {
-            if compute_script_hash(&output.script_pubkey[..]) == script_hash {
-                result.push(FundingOutput::build(
-                    txn_id,
-                    t.height,
-                    index,
-                    output.value,
-                    colored_outputs[index].clone(),
-                ))
+            if output.script_pubkey.is_colored() {
+                // For Colored Coin
+                if let Some((color_id, script)) = split_colored_script(&output.script_pubkey) {
+                    if compute_script_hash(&script[..]) == script_hash {
+                        result.push(FundingOutput::build(
+                            txn_id,
+                            t.height,
+                            index,
+                            output.value,
+                            Some(color_id),
+                            colored_outputs[index].clone(),
+                        ))
+                    }
+                }
+            } else {
+                // For Native TPC
+                if compute_script_hash(&output.script_pubkey[..]) == script_hash {
+                    result.push(FundingOutput::build(
+                        txn_id,
+                        t.height,
+                        index,
+                        output.value,
+                        None,
+                        colored_outputs[index].clone(),
+                    ))
+                }
             }
         }
         result
@@ -602,15 +633,15 @@ mod tests {
                 .unwrap();
 
         let confirmed_fundings: Vec<FundingOutput> = vec![
-            FundingOutput::build(txid1, 0, 1, 2, None),
-            FundingOutput::build(txid1, 3, 4, 5, asset_1(6, empty_metadata())),
-            FundingOutput::build(txid1, 7, 8, 9, asset_1(10, empty_metadata())),
+            FundingOutput::build(txid1, 0, 1, 2, None, None),
+            FundingOutput::build(txid1, 3, 4, 5, None, asset_1(6, empty_metadata())),
+            FundingOutput::build(txid1, 7, 8, 9, None, asset_1(10, empty_metadata())),
         ];
         let confirmed_spendings: Vec<SpendingInput> = Vec::new();
         let unconfirmed_fundings: Vec<FundingOutput> = vec![
-            FundingOutput::build(txid2, 11, 12, 13, None),
-            FundingOutput::build(txid2, 14, 15, 16, asset_1(17, empty_metadata())),
-            FundingOutput::build(txid2, 18, 19, 20, asset_1(21, empty_metadata())),
+            FundingOutput::build(txid2, 11, 12, 13, None, None),
+            FundingOutput::build(txid2, 14, 15, 16, None, asset_1(17, empty_metadata())),
+            FundingOutput::build(txid2, 18, 19, 20, None, asset_1(21, empty_metadata())),
         ];
         let unconfirmed_spendings: Vec<SpendingInput> = Vec::new();
         Status {
@@ -676,7 +707,7 @@ mod tests {
         let txid =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
-        let output = FundingOutput::build(txid, 0, 1, 2, None);
+        let output = FundingOutput::build(txid, 0, 1, 2, None, None);
         let value = output.to_json(false);
         assert_json_eq!(
             value,
@@ -694,7 +725,7 @@ mod tests {
         let txid =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
-        let output = FundingOutput::build(txid, 0, 1, 2, asset_1(3, url_metadata()));
+        let output = FundingOutput::build(txid, 0, 1, 2, None, asset_1(3, url_metadata()));
         let value = output.to_json(true);
         assert_json_eq!(
             value,
