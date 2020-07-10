@@ -222,7 +222,12 @@ impl Status {
                 balance.confirmed += output.value;
             }
         }
-        balance_map.values().cloned().collect()
+        let mut outputs = balance_map
+            .into_iter()
+            .map(|item| item.1)
+            .collect::<Vec<Balance>>();
+        outputs.sort_unstable_by_key(|out| out.color_id.clone());
+        outputs
     }
 }
 
@@ -679,12 +684,47 @@ impl Query {
 mod tests {
     use std::str::FromStr;
     use tapyrus::hash_types::Txid;
+    use tapyrus::blockdata::script::{ColorIdentifier, Builder};
+    use tapyrus::blockdata::transaction::OutPoint;
 
     use crate::open_assets::test_helper::*;
     use crate::open_assets::OpenAssetFilter;
     use crate::query::{FundingOutput, SpendingInput, Status};
 
+
     fn status() -> Status {
+        let txid1 =
+            Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap();
+        let txid2 =
+            Txid::from_str("1111111111111111111111111111111111111111111111111111111111111111")
+                .unwrap();
+
+        let reissuable = ColorIdentifier::reissuable(Builder::default().into_script());
+        let nft = ColorIdentifier::nft(OutPoint::default());
+        
+        let confirmed_fundings: Vec<FundingOutput> = vec![
+            FundingOutput::build(txid1, 10, 0, 10, Some(reissuable.clone()), None),
+            FundingOutput::build(txid1, 10, 1, 1, Some(nft.clone()), None),
+            FundingOutput::build(txid1, 10, 2, 20, None, None),
+            FundingOutput::build(txid1, 10, 3, 30, Some(reissuable.clone()), None),
+            FundingOutput::build(txid1, 10, 4, 40, None, None),
+        ];
+        let confirmed_spendings: Vec<SpendingInput> = Vec::new();
+        let unconfirmed_fundings: Vec<FundingOutput> = vec![
+            FundingOutput::build(txid2, 0, 0, 50, Some(reissuable.clone()), None),
+            FundingOutput::build(txid2, 0, 1, 20, None, None),
+            FundingOutput::build(txid2, 0, 2, 15, Some(reissuable.clone()), None),
+            FundingOutput::build(txid2, 0, 3, 20, None, None),
+        ];
+        let unconfirmed_spendings: Vec<SpendingInput> = Vec::new();
+        Status {
+            confirmed: (confirmed_fundings, confirmed_spendings),
+            mempool: (unconfirmed_fundings, unconfirmed_spendings),
+        }
+    }
+
+    fn status_with_openassets() -> Status {
         let txid1 =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
@@ -711,6 +751,22 @@ mod tests {
     }
 
     #[test]
+    fn test_balance() {
+        let status = status();
+        let balances = status.balances();
+        assert_eq!(balances.len(), 3);
+        assert!(balances[0].color_id.is_none());
+        assert_eq!(balances[0].confirmed, 60);
+        assert_eq!(balances[0].unconfirmed, 40);
+        assert_eq!(balances[1].color_id, Some(ColorIdentifier::reissuable(Builder::default().into_script())));
+        assert_eq!(balances[1].confirmed, 40);
+        assert_eq!(balances[1].unconfirmed, 65);
+        assert_eq!(balances[2].color_id, Some(ColorIdentifier::nft(OutPoint::default())));
+        assert_eq!(balances[2].confirmed, 1);
+        assert_eq!(balances[2].unconfirmed, 0);
+    }
+
+    #[test]
     fn test_colored_unspent() {
         let txid1 =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -719,7 +775,7 @@ mod tests {
             Txid::from_str("1111111111111111111111111111111111111111111111111111111111111111")
                 .unwrap();
 
-        let status = status();
+        let status = status_with_openassets();
         let unspents = status.colored_unspent();
         assert_eq!(unspents.len(), 4);
         assert_eq!(unspents[0].txn_id, txid1);
@@ -749,7 +805,7 @@ mod tests {
             Txid::from_str("1111111111111111111111111111111111111111111111111111111111111111")
                 .unwrap();
 
-        let status = status();
+        let status = status_with_openassets();
         let unspents = status.uncolored_unspent();
         assert_eq!(unspents.len(), 2);
         assert_eq!(unspents[0].txn_id, txid1);
