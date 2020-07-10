@@ -384,7 +384,7 @@ impl Query {
     fn find_funding_outputs(&self, t: &TxnHeight, script_hash: &[u8]) -> Vec<FundingOutput> {
         let mut result = vec![];
         let txn_id = t.txn.malfix_txid();
-        let colored_outputs = self.get_colored_outputs(self.app.network_type(), &t.txn);
+        let open_assets_colored_outputs = self.get_open_assets_colored_outputs(self.app.network_type(), &t.txn);
         for (index, output) in t.txn.output.iter().enumerate() {
             if output.script_pubkey.is_colored() {
                 // For Colored Coin
@@ -396,7 +396,7 @@ impl Query {
                             index,
                             output.value,
                             Some(color_id),
-                            colored_outputs[index].clone(),
+                            open_assets_colored_outputs[index].clone(),
                         ))
                     }
                 }
@@ -409,7 +409,7 @@ impl Query {
                         index,
                         output.value,
                         None,
-                        colored_outputs[index].clone(),
+                        open_assets_colored_outputs[index].clone(),
                     ))
                 }
             }
@@ -531,7 +531,7 @@ impl Query {
         // TODO: use DBStore for improving performance.
         let txid = txn.malfix_txid();
         self.asset_cache.get_or_else(&txid, || {
-            Ok(self.get_colored_outputs(self.app.network_type(), &txn))
+            Ok(self.get_open_assets_colored_outputs(self.app.network_type(), &txn))
         })
     }
 
@@ -767,7 +767,7 @@ mod tests {
     }
 
     #[test]
-    fn test_colored_unspent() {
+    fn test_open_assets_colored_unspent() {
         let txid1 =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
@@ -776,7 +776,7 @@ mod tests {
                 .unwrap();
 
         let status = status_with_openassets();
-        let unspents = status.colored_unspent();
+        let unspents = status.open_assets_colored_unspent();
         assert_eq!(unspents.len(), 4);
         assert_eq!(unspents[0].txn_id, txid1);
         assert_eq!(unspents[0].height, 3);
@@ -797,7 +797,7 @@ mod tests {
     }
 
     #[test]
-    fn test_uncolored_unspent() {
+    fn test_open_assets_uncolored_unspent() {
         let txid1 =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
@@ -806,7 +806,7 @@ mod tests {
                 .unwrap();
 
         let status = status_with_openassets();
-        let unspents = status.uncolored_unspent();
+        let unspents = status.open_assets_uncolored_unspent();
         assert_eq!(unspents.len(), 2);
         assert_eq!(unspents[0].txn_id, txid1);
         assert_eq!(unspents[0].height, 0);

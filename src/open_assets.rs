@@ -55,30 +55,30 @@ impl OpenAssetCache {
 }
 
 pub trait OpenAssetFilter {
-    fn colored_unspent(&self) -> Vec<&FundingOutput>;
-    fn uncolored_unspent(&self) -> Vec<&FundingOutput>;
+    fn open_assets_colored_unspent(&self) -> Vec<&FundingOutput>;
+    fn open_assets_uncolored_unspent(&self) -> Vec<&FundingOutput>;
 }
 
 impl OpenAssetFilter for Status {
-    fn colored_unspent(&self) -> Vec<&FundingOutput> {
-        self.unspent().iter().filter_map(|&o| o.colored()).collect()
+    fn open_assets_colored_unspent(&self) -> Vec<&FundingOutput> {
+        self.unspent().iter().filter_map(|&o| o.open_assets_colored()).collect()
     }
 
-    fn uncolored_unspent(&self) -> Vec<&FundingOutput> {
+    fn open_assets_uncolored_unspent(&self) -> Vec<&FundingOutput> {
         self.unspent()
             .iter()
-            .filter_map(|&o| o.uncolored())
+            .filter_map(|&o| o.open_assets_uncolored())
             .collect()
     }
 }
 
 pub trait OpenAssetOutput {
-    fn colored(&self) -> Option<&Self>;
-    fn uncolored(&self) -> Option<&Self>;
+    fn open_assets_colored(&self) -> Option<&Self>;
+    fn open_assets_uncolored(&self) -> Option<&Self>;
 }
 
 impl OpenAssetOutput for FundingOutput {
-    fn colored(&self) -> Option<&Self> {
+    fn open_assets_colored(&self) -> Option<&Self> {
         if self.asset.is_some() {
             Some(self)
         } else {
@@ -86,7 +86,7 @@ impl OpenAssetOutput for FundingOutput {
         }
     }
 
-    fn uncolored(&self) -> Option<&Self> {
+    fn open_assets_uncolored(&self) -> Option<&Self> {
         if self.asset.is_none() {
             Some(self)
         } else {
@@ -96,7 +96,7 @@ impl OpenAssetOutput for FundingOutput {
 }
 
 pub trait OpenAssetQuery {
-    fn get_colored_outputs(
+    fn get_open_assets_colored_outputs(
         &self,
         network_type: Network,
         txn: &Transaction,
@@ -105,7 +105,7 @@ pub trait OpenAssetQuery {
 }
 
 impl OpenAssetQuery for Query {
-    fn get_colored_outputs(
+    fn get_open_assets_colored_outputs(
         &self,
         network_type: Network,
         txn: &Transaction,

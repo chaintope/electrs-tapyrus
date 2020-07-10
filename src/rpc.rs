@@ -108,7 +108,7 @@ fn open_assets_unspent_from_status(status: &Status) -> Value {
 fn open_assets_colored_unspent_from_status(status: &Status) -> Value {
     json!(Value::Array(
         status
-            .colored_unspent()
+            .open_assets_colored_unspent()
             .into_iter()
             .map(|out| out.to_json(true))
             .collect()
@@ -118,7 +118,7 @@ fn open_assets_colored_unspent_from_status(status: &Status) -> Value {
 fn open_assets_uncolored_unspent_from_status(status: &Status) -> Value {
     json!(Value::Array(
         status
-            .uncolored_unspent()
+            .open_assets_uncolored_unspent()
             .into_iter()
             .map(|out| out.to_json(true))
             .collect()
