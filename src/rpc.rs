@@ -269,7 +269,7 @@ impl Connection {
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         let status = self.query.status(&script_hash[..])?;
         Ok(
-            json!({ "confirmed": status.confirmed_balance(), "unconfirmed": status.mempool_balance() }),
+            json!(status.balances()),
         )
     }
 

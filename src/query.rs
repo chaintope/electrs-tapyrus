@@ -4,6 +4,8 @@ use bitcoin_hashes::Hash;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use serde_json::Value;
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tapyrus::blockdata::transaction::Transaction;
@@ -89,6 +91,33 @@ struct SpendingInput {
     value: u64,
 }
 
+#[derive(Clone)]
+pub struct Balance {
+    confirmed: u64,
+    unconfirmed: u64,
+    color_id: Option<ColorIdentifier>,
+}
+
+impl Serialize for Balance {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(color_id) = &self.color_id {
+            let mut state = serializer.serialize_struct("Balance", 3)?;
+            state.serialize_field("confirmed", &self.confirmed)?;
+            state.serialize_field("unconfirmed", &self.unconfirmed)?;
+            state.serialize_field("colorid", &format!("{}", color_id))?;
+            state.end()
+        } else {
+            let mut state = serializer.serialize_struct("Balance", 2)?;
+            state.serialize_field("confirmed", &self.confirmed)?;
+            state.serialize_field("unconfirmed", &self.unconfirmed)?;
+            state.end()
+        }
+    }
+}
+
 pub struct Status {
     confirmed: (Vec<FundingOutput>, Vec<SpendingInput>),
     mempool: (Vec<FundingOutput>, Vec<SpendingInput>),
@@ -163,6 +192,37 @@ impl Status {
             sha2.result(&mut hash);
             Some(hash)
         }
+    }
+
+    pub fn balances(&self) -> Vec<Balance> {
+        let key_for_native = "000000000000000000000000000000000000000000000000000000000000000000";
+        let mut balance_map = HashMap::<String, Balance>::new();
+        for output in self.unspent() {
+            let key = if let Some(color_id) = &output.color_id {
+                format!("{}", color_id)
+            } else {
+                key_for_native.to_string()
+            };
+
+            if !balance_map.contains_key(&key) {
+                let balance = Balance {
+                    color_id: output.color_id.clone(),
+                    confirmed: 0,
+                    unconfirmed: 0,
+                };
+                balance_map.insert(key.clone(), balance);
+            }
+
+            let balance = balance_map.get_mut(&key).expect("Can not get balance");
+
+            // output is unconfirmed?
+            if output.height == 0 {
+                balance.unconfirmed += output.value;
+            } else {
+                balance.confirmed += output.value;
+            }
+        }
+        balance_map.values().cloned().collect()
     }
 }
 
