@@ -61,7 +61,10 @@ pub trait OpenAssetFilter {
 
 impl OpenAssetFilter for Status {
     fn open_assets_colored_unspent(&self) -> Vec<&FundingOutput> {
-        self.unspent().iter().filter_map(|&o| o.open_assets_colored()).collect()
+        self.unspent()
+            .iter()
+            .filter_map(|&o| o.open_assets_colored())
+            .collect()
     }
 
     fn open_assets_uncolored_unspent(&self) -> Vec<&FundingOutput> {
