@@ -249,11 +249,6 @@ impl Config {
             ResolvAddr::resolve_or_exit,
         );
 
-        match config.network {
-            Network::Prod => (),
-            Network::Dev => config.daemon_dir.push("testnet3"),
-        }
-
         let cookie_getter =
             create_cookie_getter(config.cookie, config.cookie_file, &config.daemon_dir);
 
