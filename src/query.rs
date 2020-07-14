@@ -3,13 +3,13 @@ use bitcoin_hashes::sha256d::Hash as Sha256dHash;
 use bitcoin_hashes::Hash;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use serde_json::Value;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::blockdata::script::ColorIdentifier;
+use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::consensus::encode::deserialize;
 use tapyrus::hash_types::{BlockHash, Txid};
 
@@ -384,7 +384,8 @@ impl Query {
     fn find_funding_outputs(&self, t: &TxnHeight, script_hash: &[u8]) -> Vec<FundingOutput> {
         let mut result = vec![];
         let txn_id = t.txn.malfix_txid();
-        let open_assets_colored_outputs = self.get_open_assets_colored_outputs(self.app.network_type(), &t.txn);
+        let open_assets_colored_outputs =
+            self.get_open_assets_colored_outputs(self.app.network_type(), &t.txn);
         for (index, output) in t.txn.output.iter().enumerate() {
             if output.script_pubkey.is_colored() {
                 // For Colored Coin
@@ -683,14 +684,13 @@ impl Query {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
-    use tapyrus::hash_types::Txid;
-    use tapyrus::blockdata::script::{ColorIdentifier, Builder};
+    use tapyrus::blockdata::script::{Builder, ColorIdentifier};
     use tapyrus::blockdata::transaction::OutPoint;
+    use tapyrus::hash_types::Txid;
 
     use crate::open_assets::test_helper::*;
     use crate::open_assets::OpenAssetFilter;
     use crate::query::{FundingOutput, SpendingInput, Status};
-
 
     fn status() -> Status {
         let txid1 =
@@ -702,7 +702,7 @@ mod tests {
 
         let reissuable = ColorIdentifier::reissuable(Builder::default().into_script());
         let nft = ColorIdentifier::nft(OutPoint::default());
-        
+
         let confirmed_fundings: Vec<FundingOutput> = vec![
             FundingOutput::build(txid1, 10, 0, 10, Some(reissuable.clone()), None),
             FundingOutput::build(txid1, 10, 1, 1, Some(nft.clone()), None),
@@ -758,10 +758,18 @@ mod tests {
         assert!(balances[0].color_id.is_none());
         assert_eq!(balances[0].confirmed, 60);
         assert_eq!(balances[0].unconfirmed, 40);
-        assert_eq!(balances[1].color_id, Some(ColorIdentifier::reissuable(Builder::default().into_script())));
+        assert_eq!(
+            balances[1].color_id,
+            Some(ColorIdentifier::reissuable(
+                Builder::default().into_script()
+            ))
+        );
         assert_eq!(balances[1].confirmed, 40);
         assert_eq!(balances[1].unconfirmed, 65);
-        assert_eq!(balances[2].color_id, Some(ColorIdentifier::nft(OutPoint::default())));
+        assert_eq!(
+            balances[2].color_id,
+            Some(ColorIdentifier::nft(OutPoint::default()))
+        );
         assert_eq!(balances[2].confirmed, 1);
         assert_eq!(balances[2].unconfirmed, 0);
     }
