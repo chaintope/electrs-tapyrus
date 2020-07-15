@@ -410,7 +410,7 @@ impl Connection {
             "blockchain.openassets.scripthash.listcoloredunspent" => {
                 self.blockchain_openassets_scripthash_listcoloredunspent(&params)
             }
-            "blockchain.open_assets.scripthash.listuncoloredunspent" => {
+            "blockchain.openassets.scripthash.listuncoloredunspent" => {
                 self.blockchain_openassets_scripthash_listuncoloredunspent(&params)
             }
             "blockchain.scripthash.subscribe" => self.blockchain_scripthash_subscribe(&params),
