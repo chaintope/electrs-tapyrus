@@ -68,6 +68,7 @@ fn run_server(config: &Config) -> Result<()> {
         tx_cache,
         asset_cache,
         config.txid_limit,
+        config.enable_open_assets,
     );
     let relayfee = query.get_relayfee()?;
     debug!("relayfee: {} BTC", relayfee);
@@ -78,7 +79,13 @@ fn run_server(config: &Config) -> Result<()> {
         query.update_mempool()?;
         server
             .get_or_insert_with(|| {
-                RPC::start(config.electrum_rpc_addr, query.clone(), &metrics, relayfee)
+                RPC::start(
+                    config.electrum_rpc_addr,
+                    query.clone(),
+                    &metrics,
+                    relayfee,
+                    config.enable_open_assets,
+                )
             })
             .notify(); // update subscribed clients
         if let Err(err) = signal.wait(Duration::from_secs(5)) {

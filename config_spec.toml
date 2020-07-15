@@ -17,6 +17,10 @@ count = true
 name = "timestamp"
 doc = "Prepend log lines with a timestamp"
 
+[[switch]]
+name = "enable_open_assets"
+doc = "Enable open assets feature"
+
 [[param]]
 name = "db_dir"
 type = "std::path::PathBuf"

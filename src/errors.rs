@@ -13,5 +13,10 @@ error_chain! {
             description("Interruption by external signal")
             display("Interrupted by signal {}", sig)
         }
+
+        OpenAssetsError(msg: String) {
+            description("OpenAssets error")
+            display("OpenAssets error: {}", msg)
+        }
     }
 }
