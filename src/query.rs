@@ -304,6 +304,7 @@ pub struct Query {
     asset_cache: OpenAssetCache,
     txid_limit: usize,
     duration: HistogramVec,
+    enable_open_assets: bool,
 }
 
 impl Query {
@@ -313,6 +314,7 @@ impl Query {
         tx_cache: TransactionCache,
         asset_cache: OpenAssetCache,
         txid_limit: usize,
+        enable_open_assets: bool,
     ) -> Arc<Query> {
         Arc::new(Query {
             app,
@@ -327,6 +329,7 @@ impl Query {
                 ),
                 &["type"],
             ),
+            enable_open_assets: enable_open_assets,
         })
     }
 
@@ -384,9 +387,14 @@ impl Query {
     fn find_funding_outputs(&self, t: &TxnHeight, script_hash: &[u8]) -> Vec<FundingOutput> {
         let mut result = vec![];
         let txn_id = t.txn.malfix_txid();
-        let open_assets_colored_outputs =
-            self.get_open_assets_colored_outputs(self.app.network_type(), &t.txn);
+
+        let open_assets_colored_outputs = if self.enable_open_assets {
+            self.get_open_assets_colored_outputs(self.app.network_type(), &t.txn)
+        } else {
+            std::iter::repeat(None).take(t.txn.output.len()).collect()
+        };
         for (index, output) in t.txn.output.iter().enumerate() {
+            let asset = open_assets_colored_outputs[index].clone();
             if output.script_pubkey.is_colored() {
                 // For Colored Coin
                 if let Some((color_id, script)) = split_colored_script(&output.script_pubkey) {
@@ -397,7 +405,7 @@ impl Query {
                             index,
                             output.value,
                             Some(color_id),
-                            open_assets_colored_outputs[index].clone(),
+                            asset,
                         ))
                     }
                 }
@@ -410,7 +418,7 @@ impl Query {
                         index,
                         output.value,
                         None,
-                        open_assets_colored_outputs[index].clone(),
+                        asset,
                     ))
                 }
             }

@@ -169,6 +169,7 @@ pub struct Config {
     pub server_banner: String,
     pub blocktxids_cache_size: usize,
     pub cookie_getter: Arc<dyn CookieGetter>,
+    pub enable_open_assets: bool,
 }
 
 /// Returns default daemon directory
@@ -291,6 +292,7 @@ impl Config {
             txid_limit: config.txid_limit,
             server_banner: config.server_banner,
             cookie_getter,
+            enable_open_assets: config.enable_open_assets,
         };
         eprintln!("{:?}", config);
         config

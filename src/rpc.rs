@@ -149,6 +149,7 @@ struct Connection {
     chan: SyncChannel<Message>,
     stats: Arc<Stats>,
     relayfee: f64,
+    enable_open_assets: bool,
 }
 
 impl Connection {
@@ -158,6 +159,7 @@ impl Connection {
         addr: SocketAddr,
         stats: Arc<Stats>,
         relayfee: f64,
+        enable_open_assets: bool,
     ) -> Connection {
         Connection {
             query,
@@ -168,6 +170,7 @@ impl Connection {
             chan: SyncChannel::new(10),
             stats,
             relayfee,
+            enable_open_assets,
         }
     }
 
@@ -321,6 +324,11 @@ impl Connection {
     }
 
     fn blockchain_openassets_scripthash_listunspent(&self, params: &[Value]) -> Result<Value> {
+        if !self.enable_open_assets {
+            bail!(ErrorKind::OpenAssetsError(
+                "open assets feature is disabled".to_owned()
+            ));
+        }
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_unspent_from_status(
             &self.query.status(&script_hash[..])?,
@@ -331,6 +339,11 @@ impl Connection {
         &self,
         params: &[Value],
     ) -> Result<Value> {
+        if !self.enable_open_assets {
+            bail!(ErrorKind::OpenAssetsError(
+                "open assets feature is disabled".to_owned()
+            ));
+        }
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_colored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
@@ -341,6 +354,11 @@ impl Connection {
         &self,
         params: &[Value],
     ) -> Result<Value> {
+        if !self.enable_open_assets {
+            bail!(ErrorKind::OpenAssetsError(
+                "open assets feature is disabled".to_owned()
+            ));
+        }
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_uncolored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
@@ -661,7 +679,13 @@ impl RPC {
         chan
     }
 
-    pub fn start(addr: SocketAddr, query: Arc<Query>, metrics: &Metrics, relayfee: f64) -> RPC {
+    pub fn start(
+        addr: SocketAddr,
+        query: Arc<Query>,
+        metrics: &Metrics,
+        relayfee: f64,
+        enable_open_assets: bool,
+    ) -> RPC {
         let stats = Arc::new(Stats {
             latency: metrics.histogram_vec(
                 HistogramOpts::new("electrs_electrum_rpc", "Electrum RPC latency (seconds)"),
@@ -694,7 +718,14 @@ impl RPC {
 
                     let spawned = spawn_thread("peer", move || {
                         info!("[{}] connected peer", addr);
-                        let conn = Connection::new(query, stream, addr, stats, relayfee);
+                        let conn = Connection::new(
+                            query,
+                            stream,
+                            addr,
+                            stats,
+                            relayfee,
+                            enable_open_assets,
+                        );
                         senders.lock().unwrap().push(conn.chan.sender());
                         conn.run();
                         info!("[{}] disconnected peer", addr);
