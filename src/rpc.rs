@@ -10,6 +10,7 @@ use std::str::FromStr;
 use std::sync::mpsc::{Sender, SyncSender, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use tapyrus::blockdata::script::ColorIdentifier;
 use tapyrus::blockdata::transaction::Transaction;
 use tapyrus::consensus::encode::{deserialize, serialize};
 use tapyrus::hash_types::Txid;
@@ -63,6 +64,20 @@ fn bool_from_value_or(val: Option<&Value>, name: &str, default: bool) -> Result<
     bool_from_value(val, name)
 }
 
+fn color_id_from_value(val: Option<&Value>, name: &str) -> Result<Option<ColorIdentifier>> {
+    if let Some(val) = val {
+        let val = val
+            .as_str()
+            .chain_err(|| format!("not a string {}", name))?;
+        let val = hex::decode(val).chain_err(|| format!("invalie hex format: {}", name))?;
+        let color_id: ColorIdentifier =
+            deserialize(&val[0..33]).chain_err(|| format!("decode failed: {}", name))?;
+        Ok(Some(color_id))
+    } else {
+        Ok(None)
+    }
+}
+
 fn unspent_from_status(status: &Status) -> Value {
     json!(Value::Array(
         status
@@ -73,12 +88,12 @@ fn unspent_from_status(status: &Status) -> Value {
     ))
 }
 
-fn colored_unspent_from_status(status: &Status) -> Value {
+fn colored_unspent_from_status(status: &Status, color_id: Option<ColorIdentifier>) -> Value {
     json!(Value::Array(
         status
             .unspent()
             .into_iter()
-            .filter(|o| o.color_id.is_some())
+            .filter(|o| o.color_id.is_some() && (color_id.is_none() || color_id == o.color_id))
             .map(|out| out.to_json(false))
             .collect()
     ))
@@ -290,8 +305,11 @@ impl Connection {
 
     fn blockchain_scripthash_listcoloredunspent(&self, params: &[Value]) -> Result<Value> {
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
+        let color_id =
+            color_id_from_value(params.get(1), "color_id").chain_err(|| "bad color_id")?;
         Ok(colored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
+            color_id,
         ))
     }
 
@@ -723,5 +741,97 @@ impl Drop for RPC {
             handle.join().unwrap();
         }
         trace!("RPC server is stopped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use tapyrus::blockdata::script::{Builder, ColorIdentifier};
+    use tapyrus::blockdata::transaction::OutPoint;
+
+    use crate::query::test_helper::*;
+
+    #[test]
+    fn test_color_id_from_value() {
+        let val = json!("c3890ed82cf09f22243bdc4252e4d79c8a9810c1391f455dce37a7b732eb0a0e4f");
+        let color_id = color_id_from_value(Some(&val), "color_id").unwrap();
+        assert_eq!(color_id.unwrap(), ColorIdentifier::nft(OutPoint::default()));
+
+        let color_id = color_id_from_value(None, "color_id").unwrap();
+        assert_eq!(color_id, None);
+    }
+
+    #[test]
+    fn test_colored_unspent_from_status() {
+        let status = status();
+        let reissuable = ColorIdentifier::reissuable(Builder::default().into_script());
+        let values = colored_unspent_from_status(&status, Some(reissuable));
+
+        assert_json_eq!(
+            values,
+            json!([{
+                "height": 0,
+                "tx_pos": 0,
+                "value": 50,
+                "tx_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            },{
+                "height": 0,
+                "tx_pos": 2,
+                "value": 15,
+                "tx_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            },{
+                "height": 10,
+                "tx_pos": 0,
+                "value": 10,
+                "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            },{
+                "height": 10,
+                "tx_pos": 3,
+                "value": 30,
+                "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            }]),
+        );
+
+        let values = colored_unspent_from_status(&status, None);
+        assert_json_eq!(
+            values,
+            json!([{
+                "height": 0,
+                "tx_pos": 0,
+                "value": 50,
+                "tx_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            },{
+                "height": 0,
+                "tx_pos": 2,
+                "value": 15,
+                "tx_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            },{
+                "height": 10,
+                "tx_pos": 0,
+                "value": 10,
+                "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            },{
+                "height": 10,
+                "tx_pos": 1,
+                "value": 1,
+                "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+                "color_id": "c3890ed82cf09f22243bdc4252e4d79c8a9810c1391f455dce37a7b732eb0a0e4f"
+            },{
+                "height": 10,
+                "tx_pos": 3,
+                "value": 30,
+                "tx_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+                "color_id": "c16e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+            }]),
+        );
     }
 }

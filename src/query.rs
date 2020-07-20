@@ -174,7 +174,7 @@ impl Status {
             .into_iter()
             .map(|item| item.1) // a reference to unspent output
             .collect::<Vec<&FundingOutput>>();
-        outputs.sort_unstable_by_key(|out| out.height);
+        outputs.sort_unstable_by_key(|out| (out.height, out.output_index));
         outputs
     }
 
@@ -682,17 +682,17 @@ impl Query {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod test_helper {
     use std::str::FromStr;
+
     use tapyrus::blockdata::script::{Builder, ColorIdentifier};
     use tapyrus::blockdata::transaction::OutPoint;
     use tapyrus::hash_types::Txid;
 
     use crate::open_assets::test_helper::*;
-    use crate::open_assets::OpenAssetFilter;
     use crate::query::{FundingOutput, SpendingInput, Status};
 
-    fn status() -> Status {
+    pub fn status() -> Status {
         let txid1 =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
@@ -724,7 +724,7 @@ mod tests {
         }
     }
 
-    fn status_with_openassets() -> Status {
+    pub fn status_with_openassets() -> Status {
         let txid1 =
             Txid::from_str("0000000000000000000000000000000000000000000000000000000000000000")
                 .unwrap();
@@ -749,6 +749,20 @@ mod tests {
             mempool: (unconfirmed_fundings, unconfirmed_spendings),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+    use tapyrus::blockdata::script::{Builder, ColorIdentifier};
+    use tapyrus::blockdata::transaction::OutPoint;
+    use tapyrus::hash_types::Txid;
+
+    use crate::open_assets::test_helper::*;
+    use crate::query::test_helper::*;
+
+    use crate::open_assets::OpenAssetFilter;
+    use crate::query::FundingOutput;
 
     #[test]
     fn test_balance() {
