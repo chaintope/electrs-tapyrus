@@ -1,6 +1,6 @@
 # Electrum Protocol for Electrs-Tapyrus
 
-This document describes avaliable APIs in electrs-tapyrus
+This document describes available APIs in electrs-tapyrus
 
 electrs-tapyrus is based on electrs which supports Electrum Protocol, so almost all APIs are available as is.
 
