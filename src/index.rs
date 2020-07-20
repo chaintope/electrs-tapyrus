@@ -88,7 +88,7 @@ impl TxOutRow {
                 .expect("Expected colored script(cp2pkh or cp2sh) but script is not colored");
             script
         } else {
-            Script::from(Script::from(Vec::from(&output.script_pubkey[..])))
+            Script::from(Vec::from(&output.script_pubkey[..]))
         };
 
         TxOutRow {
