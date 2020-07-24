@@ -61,6 +61,8 @@ Return the confirmed and unconfirmed balances of a `script hash`.
 
 
 Return an ordered list of UTXOs sent to a script hash including native token(TPC) and colored token.
+If the script hash of cp2pkh or cp2sh is specified, this returns list of colored token.
+If the script hash of p2pkh or p2sh is specified, this returns list of not only native token(TPC) but also colored token derived from it.
 
 **Signature**
 
@@ -120,6 +122,8 @@ Return an ordered list of UTXOs sent to a script hash including native token(TPC
 ### blockchain.scripthash.listcoloredunspent
 
 Return an ordered list of colored UTXOs sent to a script hash.
+If the script hash of cp2pkh or cp2sh is specified, this returns list of colored token.
+If the script hash of p2pkh or p2sh is specified, this returns list of colored token derived from it.
 
 **Signature**
 
