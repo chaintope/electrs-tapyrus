@@ -338,6 +338,7 @@ debug_struct! { Config,
     txid_limit,
     server_banner,
     blocktxids_cache_size,
+    enable_open_assets,
 }
 
 struct StaticCookie {
