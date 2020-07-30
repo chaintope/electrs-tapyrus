@@ -425,26 +425,14 @@ impl Connection {
             "blockchain.scripthash.listuncoloredunspent" => {
                 self.blockchain_scripthash_listuncoloredunspent(&params)
             }
-            "blockchain.openassets.scripthash.listunspent" => {
-                if self.enable_open_assets {
-                    self.blockchain_openassets_scripthash_listunspent(&params)
-                } else {
-                    bail!("unknown method {} {:?}", method, params)
-                }
+            "blockchain.openassets.scripthash.listunspent" if self.enable_open_assets => {
+                self.blockchain_openassets_scripthash_listunspent(&params)
             }
-            "blockchain.openassets.scripthash.listcoloredunspent" => {
-                if self.enable_open_assets {
-                    self.blockchain_openassets_scripthash_listcoloredunspent(&params)
-                } else {
-                    bail!("unknown method {} {:?}", method, params)
-                }
+            "blockchain.openassets.scripthash.listcoloredunspent" if self.enable_open_assets => {
+                self.blockchain_openassets_scripthash_listcoloredunspent(&params)
             }
-            "blockchain.openassets.scripthash.listuncoloredunspent" => {
-                if self.enable_open_assets {
-                    self.blockchain_openassets_scripthash_listuncoloredunspent(&params)
-                } else {
-                    bail!("unknown method {} {:?}", method, params)
-                }
+            "blockchain.openassets.scripthash.listuncoloredunspent" if self.enable_open_assets => {
+                self.blockchain_openassets_scripthash_listuncoloredunspent(&params)
             }
             "blockchain.scripthash.subscribe" => self.blockchain_scripthash_subscribe(&params),
             "blockchain.transaction.broadcast" => self.blockchain_transaction_broadcast(&params),
