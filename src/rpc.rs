@@ -324,11 +324,6 @@ impl Connection {
     }
 
     fn blockchain_openassets_scripthash_listunspent(&self, params: &[Value]) -> Result<Value> {
-        if !self.enable_open_assets {
-            bail!(ErrorKind::OpenAssetsError(
-                "open assets feature is disabled".to_owned()
-            ));
-        }
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_unspent_from_status(
             &self.query.status(&script_hash[..])?,
@@ -339,11 +334,6 @@ impl Connection {
         &self,
         params: &[Value],
     ) -> Result<Value> {
-        if !self.enable_open_assets {
-            bail!(ErrorKind::OpenAssetsError(
-                "open assets feature is disabled".to_owned()
-            ));
-        }
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_colored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
@@ -354,11 +344,6 @@ impl Connection {
         &self,
         params: &[Value],
     ) -> Result<Value> {
-        if !self.enable_open_assets {
-            bail!(ErrorKind::OpenAssetsError(
-                "open assets feature is disabled".to_owned()
-            ));
-        }
         let script_hash = script_hash_from_value(params.get(0)).chain_err(|| "bad script_hash")?;
         Ok(open_assets_uncolored_unspent_from_status(
             &self.query.status(&script_hash[..])?,
@@ -441,13 +426,25 @@ impl Connection {
                 self.blockchain_scripthash_listuncoloredunspent(&params)
             }
             "blockchain.openassets.scripthash.listunspent" => {
-                self.blockchain_openassets_scripthash_listunspent(&params)
+                if self.enable_open_assets {
+                    self.blockchain_openassets_scripthash_listunspent(&params)
+                } else {
+                    bail!("unknown method {} {:?}", method, params)
+                }
             }
             "blockchain.openassets.scripthash.listcoloredunspent" => {
-                self.blockchain_openassets_scripthash_listcoloredunspent(&params)
+                if self.enable_open_assets {
+                    self.blockchain_openassets_scripthash_listcoloredunspent(&params)
+                } else {
+                    bail!("unknown method {} {:?}", method, params)
+                }
             }
             "blockchain.openassets.scripthash.listuncoloredunspent" => {
-                self.blockchain_openassets_scripthash_listuncoloredunspent(&params)
+                if self.enable_open_assets {
+                    self.blockchain_openassets_scripthash_listuncoloredunspent(&params)
+                } else {
+                    bail!("unknown method {} {:?}", method, params)
+                }
             }
             "blockchain.scripthash.subscribe" => self.blockchain_scripthash_subscribe(&params),
             "blockchain.transaction.broadcast" => self.blockchain_transaction_broadcast(&params),
