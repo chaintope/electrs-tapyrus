@@ -32,7 +32,7 @@ tapyrus = { git = "https://github.com/chaintope/rust-tapyrus/", tag = "v0.3.0", 
 bitcoin_hashes = "0.7"
 configure_me = "0.3.4"
 configure_me_codegen = "0.3.14"
-crossbeam-channel = "0.3"
+crossbeam-channel = "0.4"
 dirs = "1.0"
 error-chain = "0.12"
 glob = "0.3"
