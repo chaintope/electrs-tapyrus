@@ -44,7 +44,7 @@ num_cpus = "1.0"
 openassets-tapyrus = { git = "https://github.com/chaintope/openassets-tapyrus/", tag = "v0.2.1" }
 page_size = "0.4"
 prometheus = "0.5"
-rocksdb = "0.13"
+rocksdb = "0.19"
 rust-crypto = "0.2"
 serde = { version = "1.0", features = ["derive"]}
 serde_derive = "1.0"
